@@ -117,14 +117,14 @@ def raw_data_process() -> list:
     for i, d in enumerate(data_list):
         d.y = y_list[i]
 
-    # # write data min and data max into {DATASET_RAW_DIR}/DATA_SCALE
-    # data_scale = [{"data_min": args["data_min"], "data_max": args["data_max"]}]
-    # # Path where the indices csv file is created. (i.e. {DATASET_RAW_DIR}/DATA_SCALE)
-    # filename = osp.join(DATASET_RAW_DIR, "DATA_SCALE")
-    # with open(filename, "w", newline="") as f:
-    #     cw = csv.DictWriter(f, fieldnames=["data_min", "data_max"])
-    #     cw.writeheader()
-    #     cw.writerows(data_scale)
+    # write data min and data max into {DATASET_RAW_DIR}/DATA_SCALE
+    data_scale = [{"data_min": args["data_min"], "data_max": args["data_max"]}]
+    # Path where the indices csv file is created. (i.e. {DATASET_RAW_DIR}/DATA_SCALE)
+    filename = osp.join(DATASET_RAW_DIR, "DATA_SCALE")
+    with open(filename, "w", newline="") as f:
+        cw = csv.DictWriter(f, fieldnames=["data_min", "data_max"])
+        cw.writeheader()
+        cw.writerows(data_scale)
 
     torch.save(data_list, osp.join("{}".format(DATASET_PROCESSED_DIR), "data.pt"))
 
@@ -149,7 +149,7 @@ class MPDataset(Dataset):
     # Get all filenames from {DATASET_RAW_DIR}/INDICES, skip download if those files exist
     @property
     def raw_file_names(self) -> list[str]:
-        filenames = ["INDICES"]
+        filenames = ["INDICES", "DATA_SCALE"]
         # indices_filename = osp.join("{}".format(DATASET_RAW_DIR), "INDICES")
         # if not osp.exists(indices_filename):
         #     return []
@@ -185,36 +185,6 @@ class MPDataset(Dataset):
         return self.data[idx]
 
 
-def split_dataset(dataset, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, lengths=None, shuffle=True, seed=None) -> list[Dataset]:
-    """
-    Split the dataset into train, valid and test datasets by ratio or length. \n
-    Provide lengths (e.g. lengths=[6000,2000,2000]) will split by length provided. \n
-    Otherwise split by ratio.
-    """
-    dataset_len = dataset.len()
-
-    lengths_mode = True if (isinstance(lengths, list) and len(lengths) == 3) else False
-
-    if lengths_mode is False and train_ratio + val_ratio + test_ratio != 1.0:
-        raise ValueError("The total ratio of split dataset is not 1.0.")
-
-    train_len = int(lengths[0] if lengths_mode else dataset_len * train_ratio)
-    val_len = int(lengths[1] if lengths_mode else dataset_len * val_ratio)
-    test_len = int(lengths[2] if lengths_mode else dataset_len * test_ratio)
-
-    idx = list(range(dataset_len))
-
-    if shuffle is True:
-        random.seed(None)
-        random.shuffle(idx)
-
-    train_dataset = dataset.index_select(idx[:train_len])
-    validation_dataset = dataset.index_select(idx[train_len : train_len + val_len])
-    test_dataset = dataset.index_select(idx[train_len + val_len : train_len + val_len + test_len])
-
-    return train_dataset, validation_dataset, test_dataset
-
-
 def random_split_dataset(dataset, lengths: Sequence[int | float] = None, seed=None) -> list[Subset]:
 
     g = torch.Generator().manual_seed(seed)
@@ -227,5 +197,34 @@ def make_dataset(args):
     dataset = MPDataset(DATASET_DIR, args)
     lengths = [args["trainset_ratio"], args["testset_ratio"], args["valset_ratio"]]
     train_dataset, validation_dataset, test_dataset = random_split_dataset(dataset, lengths=lengths, seed=args["split_dataset_seed"])
-    # train_dataset, validation_dataset, test_dataset = split_dataset(dataset, lengths=[4000, 500, 500], seed=args["split_dataset_seed"])
     return train_dataset, validation_dataset, test_dataset
+
+
+# def random_split_dataset2(dataset, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, lengths=None, shuffle=True, seed=None) -> list[Dataset]:
+#     """
+#     Split the dataset into train, valid and test datasets by ratio or length. \n
+#     Provide lengths (e.g. lengths=[6000,2000,2000]) will split by length provided. \n
+#     Otherwise split by ratio.
+#     """
+#     dataset_len = dataset.len()
+
+#     lengths_mode = True if (isinstance(lengths, list) and len(lengths) == 3) else False
+
+#     if lengths_mode is False and train_ratio + val_ratio + test_ratio != 1.0:
+#         raise ValueError("The total ratio of split dataset is not 1.0.")
+
+#     train_len = int(lengths[0] if lengths_mode else dataset_len * train_ratio)
+#     val_len = int(lengths[1] if lengths_mode else dataset_len * val_ratio)
+#     test_len = int(lengths[2] if lengths_mode else dataset_len * test_ratio)
+
+#     idx = list(range(dataset_len))
+
+#     if shuffle is True:
+#         random.seed(None)
+#         random.shuffle(idx)
+
+#     train_dataset = dataset.index_select(idx[:train_len])
+#     validation_dataset = dataset.index_select(idx[train_len : train_len + val_len])
+#     test_dataset = dataset.index_select(idx[train_len + val_len : train_len + val_len + test_len])
+
+#     return train_dataset, validation_dataset, test_dataset

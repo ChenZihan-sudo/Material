@@ -17,33 +17,38 @@ args["processed_dir"] = DATASET_PROCESSED_DIR
 args["max_cutoff_distance"] = 5.0
 
 # For dataset of Material Project
-# TODO: to get all datasets set 1000 if not debugging
 args["chunk_size"] = 1000
-# TODO: to get all datasets set None if not debugging
-args["num_chunks"] = 1
+args["num_chunks"] = None
 
-# split dataset
+# random split dataset
 args["trainset_ratio"] = 0.8
 args["testset_ratio"] = 0.1
 args["valset_ratio"] = 0.1
-args["split_dataset_shuffle"] = True
-args["split_dataset_seed"] = 1234
+args["split_dataset_seed"] = 1024
 
 # data loader
 args["batch_size"] = 128
 args["data_loader_shuffle"] = True
-args["data_loader_seed"] = 9876
+args["data_loader_seed"] = 1024
 args["num_workers"] = 0
 
 # model
-args["num_layers"] = 1
+args["conv_out_dim"] = 150
+
+args["num_layers"] = 4
+
+args["num_pre_fc"] = 1
+args["pre_fc_dim"] = 100
+
+args["num_post_fc"] = 3
+args["post_fc_dim"] = 100
+
+args["dropout_rate"] = 0.5
 
 # train
 args["epochs"] = 1000
 args["learning_rate"] = 0.0005
-args["out_channels_to_mlp"] = 100
-args["dropout_p"] = 0.5
-args["edge_weight"] = True
+
 
 # for reverse min max scalar
 args["data_min"] = None
