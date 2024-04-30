@@ -1,0 +1,5 @@
+*.pt
+*.poscar
+*.cif
+/reference
+__pycache__
