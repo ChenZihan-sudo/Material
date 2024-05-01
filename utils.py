@@ -143,15 +143,12 @@ def tensor_min_max_scalar_1d(data, new_min=0.0, new_max=1.0) -> tuple[list, torc
     data_min = torch.min(data).item()
     data_max = torch.max(data).item()
 
-    args["data_min"] = data_min
-    args["data_max"] = data_max
-
     if data_max > data_min:
         core = (data - data_min) / (data_max - data_min)
         data_new = core * (new_max - new_min) + new_min
-        return data_new
+        return data_new, data_min, data_max
     else:
-        return data
+        return data, data_min, data_max
 
 
 # Get data scale from {DATASET_RAW_DIR}/DATA_SCALE and write into args
@@ -162,9 +159,7 @@ def get_data_scale(args):
     with open(filename) as f:
         reader = csv.reader(f)
         data = [row for row in reader][1:]
-    args["data_min"] = float(data[0][0])
-    args["data_max"] = float(data[0][1])
-    return args["data_min"], args["data_max"]
+    return float(data[0][0]), float(data[0][1])
 
 
 def reverse_min_max_scalar_1d(
@@ -278,3 +273,19 @@ def get_density(x, y):
     kernel = gaussian_kde(values)
     density = kernel(values)
     return density
+
+
+# generate one hot dict
+def genOneHotDict(sets):
+    sets = list(sets)
+    sets.sort()
+    from sklearn import preprocessing
+
+    feature = [[d] for _, d in enumerate(sets)]
+    coder = preprocessing.OneHotEncoder()
+    coder.fit(feature)
+    onehots = coder.transform(feature).toarray()
+    dict = {}
+    for f, o in zip(feature, onehots):
+        dict[f[0]] = o
+    return dict

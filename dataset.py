@@ -1,8 +1,10 @@
 import random
+import json
 import csv
 import os.path as osp
 import ase
 from ase.io import read as ase_read
+import ase.io
 import numpy as np
 import torch
 from tqdm import tqdm
@@ -28,18 +30,21 @@ def download_raw_data(exclude_elements=["O"], num_elements=(3, 3)):
         chunk_size=args["chunk_size"],
         num_chunks=args["num_chunks"],
     )
-
     return raw_datasets
 
 
 # Preprocess the raw data and store them in {DATASET_RAW_DIR}
 def raw_data_preprocess(dest_dir, raw_datasets):
     indices = []
+    pbar = tqdm(total=len(raw_datasets))
+    pbar.set_description("to conventional")
     for i, d in enumerate(raw_datasets):
         # Path where the poscar file is created. (e.g. {DATASET_RAW_DIR}/CONFIG_1.poscar)
         filename = osp.join(dest_dir, "CONFIG_" + str(i + 1) + ".poscar")
-        structure = d.structure.to_conventional()
-        structure.to_file(filename=filename, fmt="poscar")
+        # filename = osp.join(dest_dir, "CONFIG_" + str(i + 1) + ".cif")
+        d.structure = d.structure.to_conventional()
+        d.structure.to_file(filename=filename, fmt="poscar")
+        # d.structure.to_file(filename=filename, fmt="cif")
 
         indices.append(
             {
@@ -48,6 +53,8 @@ def raw_data_preprocess(dest_dir, raw_datasets):
                 "formation_energy_per_atom": d.formation_energy_per_atom,
             }
         )
+        pbar.update(1)
+    pbar.close()
 
     # Path where the indices csv file is created. (i.e. {DATASET_RAW_DIR}/INDICE)
     indices_filename = osp.join(dest_dir, "INDICES")
@@ -62,8 +69,13 @@ def read_one_compound_info(compound_data) -> Data:
     data = Data()
 
     idx, mid, y = compound_data[0], compound_data[1], compound_data[2]
+    data.mid = mid
+    data.idx = idx
+
     filename = osp.join("{}".format(DATASET_RAW_DIR), "CONFIG_" + idx + ".poscar")
+    # filename = osp.join("{}".format(DATASET_RAW_DIR), "CONFIG_" + idx + ".cif")
     compound = ase_read(filename, format="vasp")
+    # compound = ase_read(filename, format="cif")
 
     # get distance matrix
     distance_matrix = compound.get_all_distances(mic=True)
@@ -81,18 +93,20 @@ def read_one_compound_info(compound_data) -> Data:
     data.edge_index = sparse_distance_matrix[0]
     data.edge_attr = torch.Tensor(np.array([sparse_distance_matrix[1]], dtype=np.float32)).t().contiguous()
 
-    data.x = torch.Tensor(np.array([compound.get_atomic_numbers()], dtype=np.float32)).t().contiguous()
+    data.atomic_numbers = compound.get_atomic_numbers()
+    # data.x = torch.Tensor(np.array([*atomic_numbers], dtype=np.float32)).t().contiguous()
     data.y = torch.Tensor(np.array([y], dtype=np.float32))
 
     return data
 
 
 # Process raw data and store them as data.pt in {DATASET_PROCESSED_DIR}
-def raw_data_process() -> list:
+def raw_data_process(raw_data=None) -> list:
     print("Raw data processing...")
 
     indices_filename = osp.join("{}".format(DATASET_RAW_DIR), "INDICES")
-    assert osp.exists(indices_filename), "INDICES file not exist in " + indices_filename
+    assert osp.exists(
+        indices_filename), "INDICES file not exist in " + indices_filename
     with open(indices_filename) as f:
         reader = csv.reader(f)
         indices = [row for row in reader][1:]  # ignore first line of header
@@ -104,35 +118,54 @@ def raw_data_process() -> list:
 
     # Process single graph
     data_list = []
+    atomic_number_set = set()
     for i, d in enumerate(indices):
         # d: one item in indices (e.g. i=0, d=['1', 'mp-861724', '-0.41328523750000556'])
+        # TODO: 如果raw_data存在则直接使用，而不是从文件中读出
         data = read_one_compound_info(d)
+        for a in data.atomic_numbers:
+            atomic_number_set.add(a)
         data_list.append(data)
         pbar.update(1)
+        print(data)
+        if i == 10:
+            break
     pbar.close()
+
+    # Create one hot for data.x
+    onehotDict = genOneHotDict(atomic_number_set)
+    print(onehotDict)
+    print(onehotDict[77])
 
     # Target normalization
     y_list = torch.tensor([data_list[i].y for i in range(len(data_list))])
-    y_list = tensor_min_max_scalar_1d(y_list)
+    y_list, data_min, data_max = tensor_min_max_scalar_1d(y_list)
     for i, d in enumerate(data_list):
         d.y = y_list[i]
 
-    # write data min and data max into {DATASET_RAW_DIR}/DATA_SCALE
-    data_scale = [{"data_min": args["data_min"], "data_max": args["data_max"]}]
-    # Path where the indices csv file is created. (i.e. {DATASET_RAW_DIR}/DATA_SCALE)
-    filename = osp.join(DATASET_RAW_DIR, "DATA_SCALE")
-    with open(filename, "w", newline="") as f:
-        cw = csv.DictWriter(f, fieldnames=["data_min", "data_max"])
-        cw.writeheader()
-        cw.writerows(data_scale)
+    # write parameters into {DATASET_RAW_DIR}/PARAMETERS
+    atomic_numbers = list(atomic_number_set)
+    atomic_numbers.sort()
+    atomic_numbers = [int(a) for a in atomic_numbers]
+    parameter = {
+        "data_min": data_min,
+        "data_max": data_max,
+        "onehot_set": atomic_numbers
+    }
+    # Path where the indices csv file is created. (i.e. {DATASET_RAW_DIR}/PARAMETERS)
+    filename = osp.join(DATASET_RAW_DIR, "PARAMETERS")
+    with open(filename, "w") as f:
+        json.dump(parameter, f)
 
-    torch.save(data_list, osp.join("{}".format(DATASET_PROCESSED_DIR), "data.pt"))
+    torch.save(data_list,
+               osp.join("{}".format(DATASET_PROCESSED_DIR), "data.pt"))
 
     return data_list
 
 
 # The Material Project Dataset
 class MPDataset(Dataset):
+
     def __init__(self, root, args, transform=None, pre_transform=None, pre_filter=None):
         self.args = args
         super().__init__(root, transform, pre_transform, pre_filter)
@@ -149,7 +182,7 @@ class MPDataset(Dataset):
     # Get all filenames from {DATASET_RAW_DIR}/INDICES, skip download if those files exist
     @property
     def raw_file_names(self) -> list[str]:
-        filenames = ["INDICES", "DATA_SCALE"]
+        filenames = ["INDICES", "PARAMETERS"]
         # indices_filename = osp.join("{}".format(DATASET_RAW_DIR), "INDICES")
         # if not osp.exists(indices_filename):
         #     return []
@@ -170,13 +203,12 @@ class MPDataset(Dataset):
 
     def download(self):
         print("Downloading raw dataset...")
-        raw_data = download_raw_data()
-        raw_data_preprocess(self.raw_dir, raw_data)
+        self.raw_data = download_raw_data()
+        raw_data_preprocess(self.raw_dir, self.raw_data)
 
     def process(self):
-        data_list = raw_data_process()
+        data_list = raw_data_process(self.raw_data)
         self.data = data_list
-        pass
 
     def len(self) -> int:
         return len(self.data)
@@ -193,12 +225,16 @@ def random_split_dataset(dataset, lengths: Sequence[int | float] = None, seed=No
     return train_dataset, validation_dataset, test_dataset
 
 
-def make_dataset(args):
+def make_dataset():
     dataset = MPDataset(DATASET_DIR, args)
     lengths = [args["trainset_ratio"], args["testset_ratio"], args["valset_ratio"]]
     train_dataset, validation_dataset, test_dataset = random_split_dataset(dataset, lengths=lengths, seed=args["split_dataset_seed"])
     return train_dataset, validation_dataset, test_dataset
 
+
+# make_dataset()
+raw_data_process()
+# download_raw_data()
 
 # def random_split_dataset2(dataset, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, lengths=None, shuffle=True, seed=None) -> list[Dataset]:
 #     """
