@@ -27,7 +27,7 @@ args["valset_ratio"] = 0.1
 args["split_dataset_seed"] = 1024
 
 # data loader
-args["batch_size"] = 128
+args["batch_size"] = 256
 args["data_loader_shuffle"] = True
 args["data_loader_seed"] = 1024
 args["num_workers"] = 0
@@ -47,7 +47,7 @@ args["dropout_rate"] = 0.5
 
 # train
 args["epochs"] = 1000
-args["learning_rate"] = 0.0005
+args["learning_rate"] = 0.002
 
 
 # for reverse min max scalar

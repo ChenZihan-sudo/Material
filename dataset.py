@@ -151,7 +151,7 @@ def raw_data_process(raw_data=None) -> list:
     # Create one hot for data.x
     onehotDict = genOneHotDict(atomic_number_set)
     for i, d in enumerate(data_list):
-        d.x = np.vstack([onehotDict[i] for i in d.atomic_numbers]).astype(float)
+        d.x = torch.tensor(np.vstack([onehotDict[i] for i in d.atomic_numbers]).astype(np.float32))
         delattr(d, "atomic_numbers")
 
     # Target normalization
@@ -221,7 +221,9 @@ class MPDataset(Dataset):
         raw_data_preprocess(self.raw_dir, self.raw_data)
 
     def process(self):
-        data_list = raw_data_process(self.raw_data)
+        # TODO: 如果raw_data存在则直接使用，而不是从文件中读出
+        # raw_data = self.raw_data if isinstance(self.raw_data) else None
+        data_list = raw_data_process()
         self.data = data_list
 
     def len(self) -> int:
@@ -246,7 +248,7 @@ def make_dataset():
     return train_dataset, validation_dataset, test_dataset
 
 
-# make_dataset()
+make_dataset()
 # raw_data_process()
 # download_raw_data()
 

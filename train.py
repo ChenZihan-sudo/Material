@@ -8,7 +8,7 @@ from utils import *
 def make_data_loader(train_set, val_set, test_set) -> list[Dataset]:
 
     g = torch.Generator().manual_seed(args["data_loader_seed"])
-    
+
     train_data_loader = DataLoader(
         train_set,
         batch_size=args["batch_size"],
