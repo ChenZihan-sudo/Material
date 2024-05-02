@@ -287,5 +287,10 @@ def genOneHotDict(sets):
     onehots = coder.transform(feature).toarray()
     dict = {}
     for f, o in zip(feature, onehots):
-        dict[f[0]] = o
+        dict[int(f[0])] = o.tolist()
+
+    filename = osp.join("{}".format(DATASET_RAW_DIR), "onehot_dict.json")
+    with open(filename, "w") as file:
+        json.dump(dict, file)
+
     return dict

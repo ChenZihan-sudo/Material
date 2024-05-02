@@ -10,7 +10,7 @@ import torch
 from tqdm import tqdm
 from torch_geometric.data import Data, Dataset
 from mp_api.client import MPRester
-from torch_geometric.utils import dense_to_sparse
+from torch_geometric.utils import dense_to_sparse, add_self_loops
 from torch.utils.data import random_split, Subset
 from typing import Sequence
 
@@ -77,22 +77,40 @@ def read_one_compound_info(compound_data) -> Data:
     compound = ase_read(filename, format="vasp")
     # compound = ase_read(filename, format="cif")
 
+    # np.set_printoptions(precision=2)
+
     # get distance matrix
     distance_matrix = compound.get_all_distances(mic=True)
+
+    # mat = distance_matrix
     # get mask by max cutoff distance
     cutoff_mask = distance_matrix > args["max_cutoff_distance"]
     # suppress invalid values using max cutoff distance
     distance_matrix = np.ma.array(distance_matrix, mask=cutoff_mask)
+    # print(distance_matrix.tolist())
     # let '--' in the masked array to 0
     distance_matrix = np.nan_to_num(np.where(cutoff_mask, np.isnan(distance_matrix), distance_matrix))
+    # print(distance_matrix.tolist())
+
+    # print(distance_matrix.tolist())
+    # a = distance_matrix.copy()
+    # a[distance_matrix > 3] = 0
+    # print(a.tolist())
+    # b = np.where(distance_matrix == 0, distance_matrix, mat)
+    # print(b.tolist())
+
     # make it as a tensor
     distance_matrix = torch.Tensor(distance_matrix)
 
-    # dense transform to sparse to get edge_index and edge_attr
+    # dense transform to sparse to get edge_index and edge_weight
     sparse_distance_matrix = dense_to_sparse(distance_matrix)
     data.edge_index = sparse_distance_matrix[0]
-    data.edge_attr = torch.Tensor(np.array([sparse_distance_matrix[1]], dtype=np.float32)).t().contiguous()
+    data.edge_weight = torch.Tensor(np.array(sparse_distance_matrix[1], dtype=np.float32)).t().contiguous()
 
+    # add self loop
+    data.edge_index, data.edge_weight = add_self_loops(data.edge_index, data.edge_weight, num_nodes=len(compound), fill_value=0)
+    # print(data.edge_index)
+    # print(data.edge_weight)
     data.atomic_numbers = compound.get_atomic_numbers()
     # data.x = torch.Tensor(np.array([*atomic_numbers], dtype=np.float32)).t().contiguous()
     data.y = torch.Tensor(np.array([y], dtype=np.float32))
@@ -105,16 +123,14 @@ def raw_data_process(raw_data=None) -> list:
     print("Raw data processing...")
 
     indices_filename = osp.join("{}".format(DATASET_RAW_DIR), "INDICES")
-    assert osp.exists(
-        indices_filename), "INDICES file not exist in " + indices_filename
+    assert osp.exists(indices_filename), "INDICES file not exist in " + indices_filename
     with open(indices_filename) as f:
         reader = csv.reader(f)
         indices = [row for row in reader][1:]  # ignore first line of header
 
     # process progress bar
     pbar = tqdm(total=len(indices))
-    description = "Processing dataset"
-    pbar.set_description(description)
+    pbar.set_description("dataset processing")
 
     # Process single graph
     data_list = []
@@ -127,38 +143,36 @@ def raw_data_process(raw_data=None) -> list:
             atomic_number_set.add(a)
         data_list.append(data)
         pbar.update(1)
-        print(data)
-        if i == 10:
-            break
+        # print(data)
+        # if i == 0:
+        #     break
     pbar.close()
 
     # Create one hot for data.x
     onehotDict = genOneHotDict(atomic_number_set)
-    print(onehotDict)
-    print(onehotDict[77])
+    for i, d in enumerate(data_list):
+        d.x = np.vstack([onehotDict[i] for i in d.atomic_numbers]).astype(float)
+        delattr(d, "atomic_numbers")
 
     # Target normalization
     y_list = torch.tensor([data_list[i].y for i in range(len(data_list))])
     y_list, data_min, data_max = tensor_min_max_scalar_1d(y_list)
     for i, d in enumerate(data_list):
-        d.y = y_list[i]
+        d.y = torch.Tensor(np.array([y_list[i]], dtype=np.float32))
 
     # write parameters into {DATASET_RAW_DIR}/PARAMETERS
     atomic_numbers = list(atomic_number_set)
     atomic_numbers.sort()
     atomic_numbers = [int(a) for a in atomic_numbers]
-    parameter = {
-        "data_min": data_min,
-        "data_max": data_max,
-        "onehot_set": atomic_numbers
-    }
+    parameter = {"data_min": data_min, "data_max": data_max, "onehot_set": atomic_numbers}
     # Path where the indices csv file is created. (i.e. {DATASET_RAW_DIR}/PARAMETERS)
     filename = osp.join(DATASET_RAW_DIR, "PARAMETERS")
     with open(filename, "w") as f:
         json.dump(parameter, f)
 
-    torch.save(data_list,
-               osp.join("{}".format(DATASET_PROCESSED_DIR), "data.pt"))
+    # print(data_list[0])
+
+    torch.save(data_list, osp.join("{}".format(DATASET_PROCESSED_DIR), "data.pt"))
 
     return data_list
 
@@ -233,7 +247,7 @@ def make_dataset():
 
 
 # make_dataset()
-raw_data_process()
+# raw_data_process()
 # download_raw_data()
 
 # def random_split_dataset2(dataset, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, lengths=None, shuffle=True, seed=None) -> list[Dataset]:
