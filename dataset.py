@@ -149,7 +149,7 @@ def raw_data_process(raw_data=None) -> list:
     pbar.close()
 
     # Create one hot for data.x
-    onehotDict = genOneHotDict(atomic_number_set)
+    onehotDict = gen_onehot_dict(atomic_number_set)
     for i, d in enumerate(data_list):
         d.x = torch.tensor(np.vstack([onehotDict[i] for i in d.atomic_numbers]).astype(np.float32))
         delattr(d, "atomic_numbers")

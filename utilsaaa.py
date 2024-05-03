@@ -272,7 +272,7 @@ def get_density(x, y):
 
 
 # generate one hot dict
-def genOneHotDict(sets):
+def gen_onehot_dict(sets):
     sets = list(sets)
     sets.sort()
     from sklearn import preprocessing

@@ -35,19 +35,19 @@ args["num_workers"] = 0
 # model
 args["conv_out_dim"] = 150
 
-args["num_layers"] = 4
+args["num_layers"] = 3
 
-args["num_pre_fc"] = 1
-args["pre_fc_dim"] = 100
+args["num_pre_fc"] = 4
+args["pre_fc_dim"] = 120
 
 args["num_post_fc"] = 3
-args["post_fc_dim"] = 100
+args["post_fc_dim"] = 120
 
-args["dropout_rate"] = 0.5
+args["dropout_rate"] = 0.3
 
 # train
 args["epochs"] = 1000
-args["learning_rate"] = 0.002
+args["learning_rate"] = 0.01
 
 
 # for reverse min max scalar

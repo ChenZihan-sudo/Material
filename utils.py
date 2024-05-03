@@ -22,8 +22,17 @@ def worker_init_fn(worker_id):
 
 
 # Plot the training progress
-def plot_training_progress(epoch, train_losses, val_losses, test_losses, title):
-    if epoch % 10 != 0:
+def plot_training_progress(
+    epoch,
+    train_losses,
+    val_losses,
+    test_losses,
+    split=5,
+    title="Loss vs. Epoch during Training",
+    res_path=None,
+    filename="train_progress.jpeg",
+):
+    if epoch % split != 0 and res_path is None:
         return
 
     lw = 0.7  # linewidth
@@ -50,6 +59,12 @@ def plot_training_progress(epoch, train_losses, val_losses, test_losses, title):
     plt.title(title)
 
     plt.legend(handles=legend_entries, loc="upper right")
+
+    # save the train graph
+    if res_path is not None:
+        filename = osp.join(res_path, filename)
+        plt.savefig(filename)
+
     plt.pause(0.001)
 
 
@@ -272,7 +287,7 @@ def get_density(x, y):
 
 
 # generate one hot dict
-def genOneHotDict(sets):
+def gen_onehot_dict(sets):
     sets = list(sets)
     sets.sort()
     from sklearn import preprocessing
