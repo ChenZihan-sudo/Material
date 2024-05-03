@@ -208,11 +208,11 @@ def plot_regression_result(title, res_path, filename="regression_result.txt", pl
     folder: the folder of the result file
     filename: the result file name
     """
-    data_min, data_max = get_data_scale(args)
+    # data_min, data_max = get_data_scale(args)
 
     y, x = load_regression_results(res_path, filename)
-    y = reverse_min_max_scalar_1d(y, data_min, data_max)
-    x = reverse_min_max_scalar_1d(x, data_min, data_max)
+    # y = reverse_min_max_scalar_1d(y, data_min, data_max)
+    # x = reverse_min_max_scalar_1d(x, data_min, data_max)
     x_min = np.min(x) - 0.001
     x_max = np.max(x) + 0.001
     y_min = np.min(y) - 0.001

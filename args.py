@@ -33,15 +33,15 @@ args["data_loader_seed"] = 1024
 args["num_workers"] = 0
 
 # model
-args["conv_out_dim"] = 150
+args["conv_out_dim"] = 200
 
-args["num_layers"] = 3
+args["num_layers"] = 2
 
 args["num_pre_fc"] = 4
-args["pre_fc_dim"] = 120
+args["pre_fc_dim"] = 100
 
-args["num_post_fc"] = 3
-args["post_fc_dim"] = 120
+args["num_post_fc"] = 4
+args["post_fc_dim"] = 100
 
 args["dropout_rate"] = 0.3
 
