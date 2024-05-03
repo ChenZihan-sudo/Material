@@ -71,6 +71,7 @@ class GCNNetwork(torch.nn.Module):
         # pre full connect
         for i, lin in enumerate(self.pre_fc):
             out = lin(x) if i == 0 else lin(out)
+            out = F.relu(out)
 
         # gcn conv layers
         for conv, bn in zip(self.convs, self.bns):
@@ -85,6 +86,7 @@ class GCNNetwork(torch.nn.Module):
         # post full connect
         for i, lin in enumerate(self.post_fc):
             out = lin(out)
+            out = F.relu(out)
 
         out = self.out_lin(out)
 

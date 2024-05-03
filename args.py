@@ -21,9 +21,9 @@ args["chunk_size"] = 1000
 args["num_chunks"] = None
 
 # random split dataset
-args["trainset_ratio"] = 0.8
-args["testset_ratio"] = 0.1
-args["valset_ratio"] = 0.1
+args["trainset_ratio"] = 0.6
+args["testset_ratio"] = 0.2
+args["valset_ratio"] = 0.2
 args["split_dataset_seed"] = 1024
 
 # data loader
