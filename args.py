@@ -19,29 +19,29 @@ args["chunk_size"] = 1000
 args["num_chunks"] = None
 
 # random split dataset
-args["trainset_ratio"] = 0.6
-args["testset_ratio"] = 0.2
-args["valset_ratio"] = 0.2
+args["trainset_ratio"] = 0.7
+args["testset_ratio"] = 0.15
+args["valset_ratio"] = 0.15
 args["split_dataset_seed"] = 1024
 
 # data loader
 args["batch_size"] = 1024
 args["data_loader_shuffle"] = True
 args["data_loader_seed"] = 1024
-args["num_workers"] = 16
+args["num_workers"] = 32
 
 # model
-args["conv_out_dim"] = 200
+args["conv_out_dim"] = 100
 
 args["num_layers"] = 1
 
-args["num_pre_fc"] = 4
-args["pre_fc_dim"] = 100
+args["num_pre_fc"] = 2
+args["pre_fc_dim"] = 200
 
-args["num_post_fc"] = 4
-args["post_fc_dim"] = 100
+args["num_post_fc"] = 2
+args["post_fc_dim"] = 200
 
-args["dropout_rate"] = 0.4
+args["dropout_rate"] = 0.6
 
 # train
 args["epochs"] = 1000
@@ -49,6 +49,6 @@ args["learning_rate"] = 0.01
 
 # for ReduceLROnPlateau scheduler
 args["sche_mode"] = "min"
-args["sche_factor"] = 0.6
+args["sche_factor"] = 0.8
 args["sche_patience"] = 20
 args["sche_min_lr"] = 1e-8
