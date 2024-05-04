@@ -132,26 +132,6 @@ def save_regression_result(test_out, test_y, result_path, filename="regression_r
         file.close()
 
 
-# Save trained GCN model for later inference
-def save_model_GCN(model, folder, model_filename, model_para_filename):
-    # The state_dict of the model is saved in model_filename
-    # The parameters to restore the saved model are saved in model_para_filename
-    # The parameters to restore the saved model are saved in a .json file
-
-    model_filename = osp.join(folder, model_filename)
-    torch.save(model, model_filename)
-
-    in_channels = model.in_channels
-    out_dim = model.out_dim
-    numLayers = model.numLayers
-
-    data = {"in_channels": in_channels, "out_dim": out_dim, "numLayers": numLayers}
-    model_para_filename = osp.join(folder, model_para_filename)
-    with open(model_para_filename, "w") as file:
-        # Write the variable names and their values to the .json file
-        json.dump(data, file)
-
-
 def tensor_min_max_scalar_1d(data, new_min=0.0, new_max=1.0) -> tuple[list, torch.Tensor]:
     assert isinstance(data, torch.Tensor)
     data_min = torch.min(data).item()

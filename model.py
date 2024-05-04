@@ -15,7 +15,6 @@ from args import *
 
 
 class GCNNetwork(torch.nn.Module):
-
     def __init__(
         self,
         in_dim,
@@ -44,6 +43,8 @@ class GCNNetwork(torch.nn.Module):
             ([torch.nn.Linear(in_dim, pre_fc_dim)] if num_pre_fc > 0 else [])
             + [torch.nn.Linear(pre_fc_dim, pre_fc_dim) for i in range(num_pre_fc - 1)]
         )
+        self.pre_fc_bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(pre_fc_dim) for i in range(num_pre_fc)])
+
         self.conv_in_dim = pre_fc_dim if num_pre_fc > 0 else in_dim
         self.convs = torch.nn.ModuleList(
             [GCNConv(self.conv_in_dim, conv_out_dim, improved=True)]
@@ -58,6 +59,7 @@ class GCNNetwork(torch.nn.Module):
             ([torch.nn.Linear(conv_out_dim, post_fc_dim)] if num_post_fc > 0 else [])
             + [torch.nn.Linear(post_fc_dim, post_fc_dim) for i in range(num_post_fc - 1)]
         )
+        self.post_fc_bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(post_fc_dim) for i in range(num_post_fc)])
 
         self.out_dim = post_fc_dim if num_post_fc > 0 else conv_out_dim
         self.out_lin = torch.nn.Linear(self.out_dim, 1)
@@ -71,6 +73,7 @@ class GCNNetwork(torch.nn.Module):
         # pre full connect
         for i, lin in enumerate(self.pre_fc):
             out = lin(x) if i == 0 else lin(out)
+            out = self.pre_fc_bns[i](out)
             out = F.relu(out)
 
         # gcn conv layers
@@ -86,6 +89,7 @@ class GCNNetwork(torch.nn.Module):
         # post full connect
         for i, lin in enumerate(self.post_fc):
             out = lin(out)
+            out = self.post_fc_bns[i](out)
             out = F.relu(out)
 
         out = self.out_lin(out)

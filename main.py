@@ -48,7 +48,6 @@ epochs = 1000
 
 # for epoch in range(1, epochs + 1):
 for epoch in range(1, 2):
-
     model, train_loss = train_step(model, train_loader, train_dataset, optimizer, device)
     val_loss, _, _ = test_evaluations(model, val_loader, validation_dataset, device, ret_data=False)
     test_loss, _, _ = test_evaluations(model, test_loader, test_dataset, device, ret_data=False)
