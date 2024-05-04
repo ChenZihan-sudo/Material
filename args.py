@@ -55,7 +55,7 @@ args["data_min"] = None
 args["data_max"] = None
 
 # for ReduceLROnPlateau scheduler
-args["sche_mode"]  ="min"
-args["sche_factor"]  =0.5
-args["sche_patience"]  =10
+args["sche_mode"] = "min"
+args["sche_factor"] = 0.5
+args["sche_patience"] = 10
 args["sche_min_lr"] = 1e-8

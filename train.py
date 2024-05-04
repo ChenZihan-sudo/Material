@@ -60,3 +60,17 @@ def test_evaluations(model, data_loader, dataset, device, ret_data=False):
 
     loss = total_loss / len(dataset)
     return loss, res_out, res_y
+
+
+def save_model_GCN(epoch, model, optimizer, scheduler, res_path, model_filename="checkpoint.pt"):
+    model_filename = osp.join(res_path, model_filename)
+    torch.save(
+        {
+            "epoch": epoch,
+            "model": model,
+            "model_state_dict": model.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "scheduler": scheduler.state_dict(),
+        },
+        model_filename,
+    )
