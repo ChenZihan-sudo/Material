@@ -27,7 +27,7 @@ args["valset_ratio"] = 0.2
 args["split_dataset_seed"] = 1024
 
 # data loader
-args["batch_size"] = 256
+args["batch_size"] = 512
 args["data_loader_shuffle"] = True
 args["data_loader_seed"] = 1024
 args["num_workers"] = 0
@@ -55,3 +55,7 @@ args["data_min"] = None
 args["data_max"] = None
 
 # for ReduceLROnPlateau scheduler
+args["sche_mode"]  ="min"
+args["sche_factor"]  =0.5
+args["sche_patience"]  =10
+args["sche_min_lr"] = 1e-8

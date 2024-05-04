@@ -1,4 +1,5 @@
 *.pt
+!results/*/*.pt
 *.poscar
 *.cif
 /reference
