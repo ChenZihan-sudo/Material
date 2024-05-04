@@ -248,7 +248,7 @@ def make_dataset():
     return train_dataset, validation_dataset, test_dataset
 
 
-make_dataset()
+# make_dataset()
 # raw_data_process()
 # download_raw_data()
 

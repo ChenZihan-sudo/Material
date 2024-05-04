@@ -37,13 +37,13 @@ args["conv_out_dim"] = 200
 
 args["num_layers"] = 2
 
-args["num_pre_fc"] = 4
+args["num_pre_fc"] = 5
 args["pre_fc_dim"] = 100
 
-args["num_post_fc"] = 4
+args["num_post_fc"] = 5
 args["post_fc_dim"] = 100
 
-args["dropout_rate"] = 0.3
+args["dropout_rate"] = 0.4
 
 # train
 args["epochs"] = 1000
