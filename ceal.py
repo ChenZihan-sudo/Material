@@ -140,14 +140,10 @@ class CEALConv(MessagePassing):
     """
 
     def forward(self, x, edge_index, batch, edge_attr=None):
-        print(x, edge_index, batch, edge_attr)
-
         if self.divide_input:
             x = x.view(-1, self.towers, self.F_in)
         else:
             x = x.view(-1, 1, self.F_in).repeat(1, self.towers, 1)
-
-        print(x)
 
         # The progagate() method is the center of a message passing layer
         if self.aggMLP:
@@ -156,14 +152,10 @@ class CEALConv(MessagePassing):
             myweights = self.agg_weights  # torch.nn.functional.softmax(self.agg_weights,dim=-1)
             out = self.propagate(edge_index, x=x, edge_attr=edge_attr, weights=myweights, batch=batch, size=None)
 
-        print(out)
-
         # Put the out from the graph part of the layer to a post-MLP
         out = torch.cat([x, out], dim=-1)
         outs = [nn(out[:, i]) for i, nn in enumerate(self.post_nns)]
         out = torch.cat(outs, dim=1)
-
-        print(out)
 
         # Why another linear layer here?
         return self.lin(out)
@@ -186,7 +178,7 @@ class CEALConv(MessagePassing):
             h = torch.cat([x_i, x_j], dim=-1)
         # Run the messages through the pre-processing MLP
         hs = [nn(h[:, i]) for i, nn in enumerate(self.pre_nns)]
-        print("message", hs)
+
         return torch.stack(hs, dim=1)
 
     """
@@ -328,7 +320,6 @@ class CEALConv(MessagePassing):
                 raise ValueError(f'Unknown scaler "{scaler}".')
             outs.append(out)
 
-        print("aggregate", outs)
         return torch.cat(outs, dim=-1)
 
     def __repr__(self):
