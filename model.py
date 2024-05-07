@@ -13,18 +13,127 @@ from torch_geometric.nn import (
 )
 from args import *
 
+import copy
+from ceal import CEALConv
+
+ceal_args = args["CEAL"]
+gcn_args = args["GCN"]
+
+
+class CEALNetwork(torch.nn.Module):
+    def __init__(
+        self,
+        deg,
+        in_dim,
+        conv_out_dim=ceal_args["conv_out_dim"],
+        num_pre_fc=ceal_args["num_pre_fc"],
+        pre_fc_dim=ceal_args["pre_fc_dim"],
+        num_post_fc=ceal_args["num_post_fc"],
+        post_fc_dim=ceal_args["post_fc_dim"],
+        num_layers=ceal_args["num_layers"],
+        drop_rate=ceal_args["dropout_rate"],
+        **kwargs,
+    ):
+        super().__init__()
+
+        self.deg = deg
+
+        self.in_dim = in_dim
+        self.conv_out_dim = conv_out_dim
+        self.num_layers = num_layers
+
+        self.num_pre_fc = num_pre_fc
+        self.pre_fc_dim = pre_fc_dim
+
+        self.num_post_fc = num_post_fc
+        self.post_fc_dim = post_fc_dim
+
+        # pre fc
+        self.pre_fc = torch.nn.ModuleList(
+            ([torch.nn.Linear(in_dim, pre_fc_dim)] if num_pre_fc > 0 else [])
+            + [torch.nn.Linear(pre_fc_dim, pre_fc_dim) for i in range(num_pre_fc - 1)]
+        )
+        self.pre_fc_bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(pre_fc_dim) for i in range(num_pre_fc)])
+
+        # ceal convs
+        # (in_dim)conv(out_dim)->bn->relu->dropout->(out_dim)conv(out_dim)->bn->relu->dropout...
+        self.conv_in_dim = pre_fc_dim if num_pre_fc > 0 else in_dim
+        default_conv = CEALConv(
+            self.conv_in_dim,
+            conv_out_dim,
+            aggregators=ceal_args["aggregators"],
+            scalers=ceal_args["scalers"],
+            deg=deg,
+            edge_dim=ceal_args["edge_dim"],
+            towers=ceal_args["towers"],
+            pre_layers=ceal_args["pre_layers"],
+            post_layers=ceal_args["post_layers"],
+            divide_input=ceal_args["divide_input"],
+            aggMLP=ceal_args["aggMLP"],
+        )
+        self.convs = torch.nn.ModuleList([default_conv] if num_layers > 0 else [])
+        # Except the first conv, in_channels of others are out_dim. (out_dim)conv(out_dim)
+        default_conv.in_channels = conv_out_dim
+        [self.convs.append(copy.deepcopy(default_conv)) for i in range(num_layers - 1)]
+        self.bns = [torch.nn.BatchNorm1d(conv_out_dim) for i in range(num_layers)]
+        self.drop_rate = drop_rate
+
+        self.pool = global_mean_pool
+
+        # post fc
+        self.post_fc = torch.nn.ModuleList(
+            ([torch.nn.Linear(conv_out_dim, post_fc_dim)] if num_post_fc > 0 else [])
+            + [torch.nn.Linear(post_fc_dim, post_fc_dim) for i in range(num_post_fc - 1)]
+        )
+        self.post_fc_bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(post_fc_dim) for i in range(num_post_fc)])
+
+        self.out_dim = post_fc_dim if num_post_fc > 0 else conv_out_dim
+        self.out_lin = torch.nn.Linear(self.out_dim, 1)
+
+    def forward(self, batch_data):
+        x, edge_index, edge_attr = batch_data.x, batch_data.edge_index, batch_data.edge_attr
+        batch = batch_data.batch
+
+        out = None
+
+        # pre full connect
+        for i, lin in enumerate(self.pre_fc):
+            out = lin(x) if i == 0 else lin(out)
+            out = self.pre_fc_bns[i](out)
+            out = F.relu(out)
+
+        # gcn conv layers
+        for conv, bn in zip(self.convs, self.bns):
+            out = conv(out, edge_index, batch, edge_attr)
+            out = bn(out)
+            out = F.relu(out)
+            out = F.dropout(out, p=self.drop_rate, training=self.training)
+
+        # global pooling
+        out = self.pool(out, batch)
+
+        # post full connect
+        for i, lin in enumerate(self.post_fc):
+            out = lin(out)
+            out = self.post_fc_bns[i](out)
+            out = F.relu(out)
+
+        out = self.out_lin(out)
+
+        return out
+
 
 class GCNNetwork(torch.nn.Module):
     def __init__(
         self,
         in_dim,
-        conv_out_dim=args["conv_out_dim"],
-        num_pre_fc=args["num_pre_fc"],
-        pre_fc_dim=args["pre_fc_dim"],
-        num_post_fc=args["num_post_fc"],
-        post_fc_dim=args["post_fc_dim"],
-        num_layers=args["num_layers"],
-        drop_rate=args["dropout_rate"],
+        conv_out_dim=gcn_args["conv_out_dim"],
+        num_pre_fc=gcn_args["num_pre_fc"],
+        pre_fc_dim=gcn_args["pre_fc_dim"],
+        num_post_fc=gcn_args["num_post_fc"],
+        post_fc_dim=gcn_args["post_fc_dim"],
+        num_layers=gcn_args["num_layers"],
+        drop_rate=gcn_args["dropout_rate"],
         **kwargs,
     ):
         super().__init__()
@@ -95,51 +204,3 @@ class GCNNetwork(torch.nn.Module):
         out = self.out_lin(out)
 
         return out
-
-
-# # GCNConv Network
-# class GCNNetwork(torch.nn.Module):
-
-#     def __init__(self, in_channels, out_dim, numLayers=args["num_layers"]):
-#         super().__init__()
-#         self.in_channels = in_channels
-#         self.out_dim = out_dim
-#         self.numLayers = numLayers
-#         self.conv1 = GCNConv(self.in_channels, out_dim)
-#         self.batch_norm1 = BatchNorm(self.out_dim)
-
-#         # This container holds 2nd and more GCN layers
-#         self.gcnConvs = ModuleList()
-#         self.batch_norms = ModuleList()
-#         for _ in range(1, self.numLayers):
-#             gcnconv = GCNConv(self.out_dim, out_dim)
-#             batch_norm = BatchNorm(self.out_dim)
-#             self.gcnConvs.append(gcnconv)
-#             self.batch_norms.append(batch_norm)
-
-#         self.pre_mlp = Sequential(Linear(self.in_channels, out_dim // 2), ReLU(), Linear(self.out_dim // 2, self.out_dim))
-#         self.post_mlp = Sequential(Linear(out_dim, 100), ReLU(), Linear(100, 1))
-
-#     def forward(self, batch_data):
-#         # Note: batch_data is provided by Dataloader
-#         x, edge_index = batch_data.x, batch_data.edge_index
-#         edge_weight = batch_data.edge_attr.squeeze() if args["edge_weight"] is True else None
-
-#         if args["edge_weight"] is True:
-#             print("edge weight is added into the model.")
-
-#         # x = self.pre_mlp(x)
-#         x = self.conv1(x, edge_index, edge_weight)
-#         x = self.batch_norm1(x)
-#         x = F.relu(x)
-#         x = F.dropout(x, p=args["dropout_p"], training=self.training)
-
-#         for gcnconv, batch_norm in zip(self.gcnConvs, self.batch_norms):
-#             x = batch_norm(gcnconv(x, edge_index, edge_weight))
-#             x = F.relu(x)
-#             x = F.dropout(x, p=args["dropout_p"], training=self.training)
-
-#         # x = global_add_pool(x, batch_data.batch)
-#         x = global_mean_pool(x, batch_data.batch)
-#         out = self.post_mlp(x)
-#         return out

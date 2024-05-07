@@ -3,7 +3,7 @@ import os.path as osp
 MP_API_KEY = "j61NN3yuDh8tQWf0OrkachbbUoJ8npVP"
 
 WORK_DIR = "."
-DATASET_DIR = osp.join("{}".format(WORK_DIR), "dataset")
+DATASET_DIR = osp.join("{}".format(WORK_DIR), "dataset.spglib==2.3.1")
 DATASET_RAW_DIR = osp.join("{}".format(DATASET_DIR), "raw")
 DATASET_PROCESSED_DIR = osp.join("{}".format(DATASET_DIR), "processed")
 
@@ -28,27 +28,52 @@ args["split_dataset_seed"] = 1024
 args["batch_size"] = 1024
 args["data_loader_shuffle"] = True
 args["data_loader_seed"] = 1024
-args["num_workers"] = 32
+args["num_workers"] = 0
 
-# model
-args["conv_out_dim"] = 100
-
-args["num_layers"] = 1
-
-args["num_pre_fc"] = 2
-args["pre_fc_dim"] = 200
-
-args["num_post_fc"] = 2
-args["post_fc_dim"] = 200
-
-args["dropout_rate"] = 0.6
-
+# * GCN model
+args["GCN"] = {}
+gcn_args = args["GCN"]
+gcn_args["conv_out_dim"] = 100
+gcn_args["num_layers"] = 1
+gcn_args["num_pre_fc"] = 2
+gcn_args["pre_fc_dim"] = 200
+gcn_args["num_post_fc"] = 2
+gcn_args["post_fc_dim"] = 200
+gcn_args["dropout_rate"] = 0.6
 # train
-args["epochs"] = 1000
-args["learning_rate"] = 0.01
-
+gcn_args["epochs"] = 1000
+gcn_args["learning_rate"] = 0.01
 # for ReduceLROnPlateau scheduler
-args["sche_mode"] = "min"
-args["sche_factor"] = 0.8
-args["sche_patience"] = 20
-args["sche_min_lr"] = 1e-8
+gcn_args["sche_mode"] = "min"
+gcn_args["sche_factor"] = 0.8
+gcn_args["sche_patience"] = 20
+gcn_args["sche_min_lr"] = 1e-8
+
+# * CEAL model
+args["CEAL"] = {}
+ceal_args = args["CEAL"]
+# ceal conv parameters
+ceal_args["aggregators"] = ["sum", "mean", "min", "max", "std"]
+ceal_args["scalers"] = ["identity"]
+ceal_args["edge_dim"] = 1
+ceal_args["towers"] = 1
+ceal_args["pre_layers"] = 1
+ceal_args["post_layers"] = 1
+ceal_args["divide_input"] = False
+ceal_args["aggMLP"] = True
+# model parameters
+ceal_args["conv_out_dim"] = 100
+ceal_args["num_layers"] = 1
+ceal_args["num_pre_fc"] = 2
+ceal_args["pre_fc_dim"] = 200
+ceal_args["num_post_fc"] = 2
+ceal_args["post_fc_dim"] = 200
+ceal_args["dropout_rate"] = 0.6
+# train
+ceal_args["epochs"] = 1000
+ceal_args["learning_rate"] = 0.01
+# for ReduceLROnPlateau scheduler
+ceal_args["sche_mode"] = "min"
+ceal_args["sche_factor"] = 0.8
+ceal_args["sche_patience"] = 20
+ceal_args["sche_min_lr"] = 1e-8

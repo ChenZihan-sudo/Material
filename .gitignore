@@ -3,7 +3,7 @@
 *.poscar
 *.cif
 /reference
-/dataset
+/dataset*
 __pycache__
 .DS_Store
 *.code-workspace

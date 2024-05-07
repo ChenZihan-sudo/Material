@@ -115,6 +115,8 @@ def read_one_compound_info(compound_data) -> Data:
     # data.x = torch.Tensor(np.array([*atomic_numbers], dtype=np.float32)).t().contiguous()
     data.y = torch.Tensor(np.array([y], dtype=np.float32))
 
+    data.edge_attr = edge_weight_to_edge_attr(data.edge_weight)
+
     return data
 
 
@@ -248,7 +250,7 @@ def make_dataset():
     return train_dataset, validation_dataset, test_dataset
 
 
-# make_dataset()
+make_dataset()
 # raw_data_process()
 # download_raw_data()
 

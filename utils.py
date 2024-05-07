@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from scipy.stats import gaussian_kde
+from torch_geometric.utils import degree
 
 
 def get_device() -> str:
@@ -79,8 +80,7 @@ def save_hyper_parameter(hyper_dict, result_path, hyper_para_filename="hyperpara
 
 
 # Create result folder with ns timestamp (e.g. ./results/1712654332689967)
-def createResultFolder() -> str:
-    results_path = "./results"
+def createResultFolder(results_path="./results") -> str:
     isExist = osp.exists(results_path)
     if not isExist:
         os.makedirs(results_path)
@@ -285,3 +285,22 @@ def gen_onehot_dict(sets):
         json.dump(dict, file)
 
     return dict
+
+
+def generate_deg(dataset):
+    max_degree = -1
+    for data in dataset:
+        d = degree(data.edge_index[1], num_nodes=data.num_nodes, dtype=torch.long)
+        # find the max degree in the whole dateset
+        max_degree = max(max_degree, int(d.max()))
+
+    # Compute the in-degree histogram tensor
+    deg = torch.zeros(max_degree + 1, dtype=torch.long)
+    for data in dataset:
+        d = degree(data.edge_index[1], num_nodes=data.num_nodes, dtype=torch.long)
+        deg += torch.bincount(d, minlength=deg.numel())
+    return deg
+
+
+def edge_weight_to_edge_attr(data):
+    return torch.unsqueeze(data, dim=1)
