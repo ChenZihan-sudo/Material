@@ -60,7 +60,7 @@ ceal_args["towers"] = 1
 ceal_args["pre_layers"] = 1
 ceal_args["post_layers"] = 1
 ceal_args["divide_input"] = False
-ceal_args["aggMLP"] = True
+ceal_args["aggMLP"] = False
 # model parameters
 ceal_args["conv_out_dim"] = 100
 ceal_args["num_layers"] = 1
