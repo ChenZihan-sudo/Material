@@ -20,7 +20,6 @@ from utils import *
 
 # Download compounds raw data from the Material Project
 def download_raw_data(exclude_elements=["O"], num_elements=(3, 3)):
-
     mpr = MPRester(MP_API_KEY)
 
     raw_datasets = mpr.materials.summary.search(
@@ -181,7 +180,6 @@ def raw_data_process(raw_data=None) -> list:
 
 # The Material Project Dataset
 class MPDataset(Dataset):
-
     def __init__(self, root, args, transform=None, pre_transform=None, pre_filter=None):
         self.args = args
         super().__init__(root, transform, pre_transform, pre_filter)
@@ -236,7 +234,6 @@ class MPDataset(Dataset):
 
 
 def random_split_dataset(dataset, lengths: Sequence[int | float] = None, seed=None) -> list[Subset]:
-
     g = torch.Generator().manual_seed(seed)
     train_dataset, validation_dataset, test_dataset = random_split(dataset, lengths, generator=g)
 
@@ -250,9 +247,13 @@ def make_dataset():
     return train_dataset, validation_dataset, test_dataset
 
 
-make_dataset()
+if __name__ == "__main__":
+    make_dataset()
+
+# make_dataset()
 # raw_data_process()
 # download_raw_data()
+
 
 # def random_split_dataset2(dataset, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, lengths=None, shuffle=True, seed=None) -> list[Dataset]:
 #     """

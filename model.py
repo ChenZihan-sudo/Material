@@ -75,7 +75,7 @@ class CEALNetwork(torch.nn.Module):
         # Except the first conv, in_channels of others are out_dim. (out_dim)conv(out_dim)
         default_conv.in_channels = conv_out_dim
         [self.convs.append(copy.deepcopy(default_conv)) for i in range(num_layers - 1)]
-        self.bns = [torch.nn.BatchNorm1d(conv_out_dim) for i in range(num_layers)]
+        self.bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(conv_out_dim) for i in range(num_layers)])
         self.drop_rate = drop_rate
 
         self.pool = global_mean_pool
