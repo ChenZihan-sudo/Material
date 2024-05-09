@@ -19,16 +19,16 @@ args["chunk_size"] = 1000
 args["num_chunks"] = None
 
 # random split dataset
-args["trainset_ratio"] = 0.7
-args["testset_ratio"] = 0.15
-args["valset_ratio"] = 0.15
+args["trainset_ratio"] = 0.6
+args["valset_ratio"] = 0.2
+args["testset_ratio"] = 0.2
 args["split_dataset_seed"] = 1024
 
 # data loader
 args["batch_size"] = 1024
 args["data_loader_shuffle"] = True
 args["data_loader_seed"] = 1024
-args["num_workers"] = 0
+args["num_workers"] = 8
 
 # * GCN model
 args["GCN"] = {}
@@ -60,17 +60,17 @@ ceal_args["towers"] = 1
 ceal_args["pre_layers"] = 1
 ceal_args["post_layers"] = 1
 ceal_args["divide_input"] = False
-ceal_args["aggMLP"] = False
+ceal_args["aggMLP"] = True
 # model parameters
-ceal_args["conv_out_dim"] = 100
+ceal_args["conv_out_dim"] = 50
 ceal_args["num_layers"] = 1
-ceal_args["num_pre_fc"] = 2
-ceal_args["pre_fc_dim"] = 200
-ceal_args["num_post_fc"] = 2
-ceal_args["post_fc_dim"] = 200
-ceal_args["dropout_rate"] = 0.6
+ceal_args["num_pre_fc"] = 1
+ceal_args["pre_fc_dim"] = 100
+ceal_args["num_post_fc"] = 1
+ceal_args["post_fc_dim"] = 100
+ceal_args["dropout_rate"] = 0.3
 # train
-ceal_args["epochs"] = 1000
+ceal_args["epochs"] = 10000
 ceal_args["learning_rate"] = 0.01
 # for ReduceLROnPlateau scheduler
 ceal_args["sche_mode"] = "min"

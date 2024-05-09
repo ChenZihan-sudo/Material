@@ -90,7 +90,7 @@ class CEALConv(MessagePassing):
         self.lin = Linear(out_channels, out_channels)
 
         if self.aggMLP:
-            factor = 0.7
+            factor = 1  # TODO: make it as a param
             self.mlp_w0 = Sequential(
                 torch.nn.Linear(self.F_in, round(self.F_in * factor)), ReLU(), torch.nn.Linear(round(self.F_in * factor), self.F_in)
             )

@@ -106,7 +106,7 @@ def save_train_progress(epochs, train_losses, val_losses, test_losses, result_pa
             "val_losses": val_losses[i - 1],
             "test_losses": test_losses[i - 1],
         }
-        for i in range(1, epochs + 1)
+        for i in range(1, len(train_losses))
     ]
     with open(train_progress_path, "w", newline="") as f:
         cw = csv.DictWriter(f, fieldnames=["epochs", "train_losses", "val_losses", "test_losses"])
@@ -169,7 +169,6 @@ def reverse_min_max_scalar_1d(
 
 # Load regression results
 def load_regression_results(folder, filename):
-
     filename = osp.join(folder, filename)
 
     with open(filename, "r") as f:

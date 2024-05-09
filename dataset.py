@@ -179,6 +179,7 @@ def raw_data_process(raw_data=None) -> list:
 
 
 # The Material Project Dataset
+# TODO: add dataset on InDataMemory
 class MPDataset(Dataset):
     def __init__(self, root, args, transform=None, pre_transform=None, pre_filter=None):
         self.args = args
