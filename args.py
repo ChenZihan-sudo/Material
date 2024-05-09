@@ -25,7 +25,7 @@ args["testset_ratio"] = 0.2
 args["split_dataset_seed"] = 1024
 
 # data loader
-args["batch_size"] = 1024
+args["batch_size"] = 512
 args["data_loader_shuffle"] = True
 args["data_loader_seed"] = 1024
 args["num_workers"] = 8
@@ -74,6 +74,6 @@ ceal_args["epochs"] = 10000
 ceal_args["learning_rate"] = 0.01
 # for ReduceLROnPlateau scheduler
 ceal_args["sche_mode"] = "min"
-ceal_args["sche_factor"] = 0.8
-ceal_args["sche_patience"] = 20
+ceal_args["sche_factor"] = 0.85
+ceal_args["sche_patience"] = 25
 ceal_args["sche_min_lr"] = 1e-8
