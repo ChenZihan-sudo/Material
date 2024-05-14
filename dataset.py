@@ -13,6 +13,9 @@ from mp_api.client import MPRester
 from torch_geometric.utils import dense_to_sparse, add_self_loops
 from torch.utils.data import random_split, Subset
 from typing import Sequence
+from itertools import permutations
+import copy
+import gc
 
 from args import *
 from utils import *
@@ -72,31 +75,17 @@ def read_one_compound_info(compound_data) -> Data:
     data.idx = idx
 
     filename = osp.join("{}".format(DATASET_RAW_DIR), "CONFIG_" + idx + ".poscar")
-    # filename = osp.join("{}".format(DATASET_RAW_DIR), "CONFIG_" + idx + ".cif")
     compound = ase_read(filename, format="vasp")
-    # compound = ase_read(filename, format="cif")
-
-    # np.set_printoptions(precision=2)
 
     # get distance matrix
     distance_matrix = compound.get_all_distances(mic=True)
 
-    # mat = distance_matrix
     # get mask by max cutoff distance
     cutoff_mask = distance_matrix > args["max_cutoff_distance"]
     # suppress invalid values using max cutoff distance
     distance_matrix = np.ma.array(distance_matrix, mask=cutoff_mask)
-    # print(distance_matrix.tolist())
     # let '--' in the masked array to 0
     distance_matrix = np.nan_to_num(np.where(cutoff_mask, np.isnan(distance_matrix), distance_matrix))
-    # print(distance_matrix.tolist())
-
-    # print(distance_matrix.tolist())
-    # a = distance_matrix.copy()
-    # a[distance_matrix > 3] = 0
-    # print(a.tolist())
-    # b = np.where(distance_matrix == 0, distance_matrix, mat)
-    # print(b.tolist())
 
     # make it as a tensor
     distance_matrix = torch.Tensor(distance_matrix)
@@ -108,10 +97,8 @@ def read_one_compound_info(compound_data) -> Data:
 
     # add self loop
     data.edge_index, data.edge_weight = add_self_loops(data.edge_index, data.edge_weight, num_nodes=len(compound), fill_value=0)
-    # print(data.edge_index)
-    # print(data.edge_weight)
+
     data.atomic_numbers = compound.get_atomic_numbers()
-    # data.x = torch.Tensor(np.array([*atomic_numbers], dtype=np.float32)).t().contiguous()
     data.y = torch.Tensor(np.array([y], dtype=np.float32))
 
     data.edge_attr = edge_weight_to_edge_attr(data.edge_weight)
@@ -150,9 +137,9 @@ def raw_data_process(raw_data=None) -> list:
     pbar.close()
 
     # Create one hot for data.x
-    onehotDict = gen_onehot_dict(atomic_number_set)
+    onehot_dict = make_onehot_dict(atomic_number_set)
     for i, d in enumerate(data_list):
-        d.x = torch.tensor(np.vstack([onehotDict[i] for i in d.atomic_numbers]).astype(np.float32))
+        d.x = torch.tensor(np.vstack([onehot_dict[i] for i in d.atomic_numbers]).astype(np.float32))
         delattr(d, "atomic_numbers")
 
     # Target normalization
@@ -184,7 +171,6 @@ class MPDataset(Dataset):
     def __init__(self, root, args, transform=None, pre_transform=None, pre_filter=None):
         self.args = args
         super().__init__(root, transform, pre_transform, pre_filter)
-        # self.load(self.processed_paths[0])
 
         path = osp.join(self.processed_dir, "data.pt")
         self.data = torch.load(path)
@@ -247,6 +233,214 @@ def make_dataset():
     train_dataset, validation_dataset, test_dataset = random_split_dataset(dataset, lengths=lengths, seed=args["split_dataset_seed"])
     return train_dataset, validation_dataset, test_dataset
 
+
+##################################################################
+# For hypothesis dataset
+##################################################################
+
+
+def get_replace_atomic_numbers(compound, target_atomic_numbers):
+    """
+    get atomic numbers replaced list from origin one to `target_atomic_numbers` with full permutations.
+
+    (e.g, origin: [1,1,1,1,2,2], target_atomic_numbers:[3,4], result:[[3,3,3,3,4,4],[4,4,4,4,3,3]])
+
+    (e.g, origin: [1,2,2,2,2,3,3], target_atomic_numbers:[4,5,6], result:[[4,5,5,5,5,6,6],[4,6,6,6,6,5,5],[5,4,4,4,4,6,6],[5,6,6,6,6,4,4],[6,5,5,5,5,4,4],[6,4,4,4,4,5,5]])
+    """
+    target_atomic_numbers = list(set(target_atomic_numbers))
+
+    # full permutations of target_atomic_numbers
+    targets = [list(i) for i in permutations(target_atomic_numbers, len(target_atomic_numbers))]
+
+    np_atomic_numbers = compound.get_atomic_numbers()
+    set_atomic_numbers = [i for i in set(np_atomic_numbers)]
+
+    replace_atomic_numbers = []
+    for j, target in enumerate(targets):
+        array = np.array(np_atomic_numbers)
+        for i, d in enumerate(set_atomic_numbers):
+            array[array == d] = target[i]
+        replace_atomic_numbers.append(array)
+    return replace_atomic_numbers
+
+
+def scale_compound_volume(compound, scaling_factor):
+    """
+    scale the compound by volume
+    """
+    scaling_factor = scaling_factor ** (1 / 3)
+    compound.set_cell(compound.cell * scaling_factor, scale_atoms=True)
+
+
+def get_ase_hypothesis_compounds(scales, hypo_atomic_numbers, original_compound):
+    """
+    get ase format hypothesis compounds from one original compound
+
+    total hypothesis compounds num is `len(scales) * len(hypo_atomic_numbers)`
+
+    return `hypothesis_compounds` with ase compounds
+    """
+    # get replaced atomic numbers
+    # print("------")
+    # print(scales, hypo_atomic_numbers)
+    # print(original_compound)
+    hypo_atomic_numbers = get_replace_atomic_numbers(original_compound, hypo_atomic_numbers)
+    # print(scales, hypo_atomic_numbers)
+    # print("origin one,", "volume:", round(original_compound.get_volume(), 2), original_compound)
+    # print("------")
+
+    # get scaled compounds
+    scaled_compounds = []
+    for i, d in enumerate(scales):
+        sacled_compound = copy.deepcopy(original_compound)
+        scale_compound_volume(sacled_compound, d)
+        scaled_compounds.append(sacled_compound)
+    # print("num hypothesis scaled compounds:", len(scaled_compounds))
+
+    # get hypothesis compounds
+    hypothesis_compounds = []
+    for i, sacled_compound in enumerate(scaled_compounds):
+        for j, hypo_atomic_number in enumerate(hypo_atomic_numbers):
+            compound = copy.deepcopy(sacled_compound)
+            compound.set_atomic_numbers(hypo_atomic_number)
+            hypothesis_compounds.append(compound)
+
+    # print("total hypothesis for single origin compound: ", len(hypothesis_compounds))
+    # [print("volume:", round(i.get_volume(), 2), i) for i in hypothesis_compounds]
+
+    return hypothesis_compounds
+
+
+def get_one_hypothesis_compound(compound, onehot_dict):
+    """
+    get Data() from one hypothesis compound
+    """
+    data = Data()
+
+    # get distance matrix
+    distance_matrix = compound.get_all_distances(mic=True)
+
+    # get mask by max cutoff distance
+    cutoff_mask = distance_matrix > args["max_cutoff_distance"]
+    # suppress invalid values using max cutoff distance
+    distance_matrix = np.ma.array(distance_matrix, mask=cutoff_mask)
+    # let '--' in the masked array to 0
+    distance_matrix = np.nan_to_num(np.where(cutoff_mask, np.isnan(distance_matrix), distance_matrix))
+
+    # make it as a tensor
+    distance_matrix = torch.Tensor(distance_matrix)
+
+    # dense transform to sparse to get edge_index and edge_weight
+    sparse_distance_matrix = dense_to_sparse(distance_matrix)
+    data.edge_index = sparse_distance_matrix[0]
+    data.edge_weight = torch.Tensor(np.array(sparse_distance_matrix[1], dtype=np.float32)).t().contiguous()
+
+    # add self loop
+    data.edge_index, data.edge_weight = add_self_loops(data.edge_index, data.edge_weight, num_nodes=len(compound), fill_value=0)
+
+    data.edge_attr = edge_weight_to_edge_attr(data.edge_weight)
+    delattr(data, "edge_weight")
+
+    # get onehot x
+    atomic_numbers = compound.get_atomic_numbers()
+    data.x = torch.tensor(np.vstack([onehot_dict[str(i)] for i in atomic_numbers]).astype(np.float32))
+
+    return data
+
+
+# TODO: 如果raw_data存在则直接使用，而不是从文件中读出
+def make_hypothesis_compounds_dataset(args=args, split_data=True, split_num=10):
+    """
+    Make hypothesis compounds
+
+    Args:
+        `args`: global arguments
+        `split_data`: `True` if save dataset into splited multi-blocks
+        `split_num`: specify how many splited blocks
+    """
+    hypo_args = args["hypothesis_dataset"]
+    file_path = osp.join(args["processed_dir"], hypo_args["data_filename"])
+    # if osp.exists(file_path) is True:
+    #     print("Warning: hypothesis compounds dataset already exist. Using data in ", file_path)
+    #     return
+
+    indices_filename = osp.join("{}".format(DATASET_RAW_DIR), "INDICES")
+    assert osp.exists(indices_filename), "INDICES file not exist in " + indices_filename
+    with open(indices_filename) as f:
+        reader = csv.reader(f)
+        indices = [row for row in reader][1:]  # ignore first line of header
+
+    # process progress bar
+    scales = hypo_args["scales"]
+    hypo_atomic_numbers = hypo_args["atomic_numbers"]
+
+    num_atomic_numbers_perms = len([i for i in permutations(hypo_atomic_numbers, len(hypo_atomic_numbers))])
+    # print("num_atomic_numbers_perms ", num_atomic_numbers_perms)
+    single_processed = len(scales) * num_atomic_numbers_perms
+    # print("single_processed ", single_processed)
+    total_processed = len(indices) * single_processed
+    # print("total_processed ", total_processed)
+    pbar = tqdm(total=total_processed)
+    pbar.set_description("hypothesis compounds dataset processing")
+
+    # read one hot dict from {DATASET_RAW_DIR}/onehot_dict.json
+    onehot_dict = read_onehot_dict(DATASET_RAW_DIR, "onehot_dict.json")
+
+    # split data if need
+    if split_data is True:
+        step = len(indices) // 10
+        save_point = [i + step - 1 for i in list(range(0, len(indices)))[::step]]
+        track = 0
+        print("save point: ", save_point)
+
+    # Process single graph data
+    data_list = []
+    for i, d in enumerate(indices):
+        # TODO: 如果raw_data存在则直接使用，而不是从文件中读出
+        # d: one item in indices (e.g. i=0, d=['1', 'mp-861724', '-0.41328523750000556'])
+
+        # read original compound data
+        idx, mid, y = d[0], d[1], d[2]
+        filename = osp.join("{}".format(DATASET_RAW_DIR), "CONFIG_" + idx + ".poscar")
+        original_compound = ase_read(filename, format="vasp")
+
+        # get hypothesis ase compounds
+        hypo_compounds = get_ase_hypothesis_compounds(scales, hypo_atomic_numbers, original_compound)
+        # get data list of hypothesis compounds
+        hypo_data_list = [get_one_hypothesis_compound(hypo_compound, onehot_dict) for hypo_compound in hypo_compounds]
+
+        # append all of hypo data into data_list
+        for hypo_data in hypo_data_list:
+            data_list.append(hypo_data)
+
+        # split data if need
+        if split_data is True:
+            if save_point[track] == i:
+                track += 1
+                osp.join(args["processed_dir"], hypo_args["data_filename"] + "_" + track)
+                print("save data to ", )
+                torch.save
+
+        pbar.update(single_processed)
+
+    # split data if need
+    if split_data is True:
+        if track != len(save_point):
+            print("save data on ", i)
+
+    pbar.close()
+
+    print("num total data: ", len(data_list))
+
+    if split_data is not True:
+        # save the hypothesis compounds into file_path
+        torch.save(data_list, file_path)
+
+    return
+
+
+##################################################################
+##################################################################
 
 if __name__ == "__main__":
     make_dataset()

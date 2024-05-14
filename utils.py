@@ -265,8 +265,10 @@ def get_density(x, y):
     return density
 
 
-# generate one hot dict
-def gen_onehot_dict(sets):
+def make_onehot_dict(sets):
+    """
+    make one hot dict
+    """
     sets = list(sets)
     sets.sort()
     from sklearn import preprocessing
@@ -281,9 +283,23 @@ def gen_onehot_dict(sets):
 
     filename = osp.join("{}".format(DATASET_RAW_DIR), "onehot_dict.json")
     with open(filename, "w") as file:
-        json.dump(dict, file)
+        json.load(file)
 
     return dict
+
+
+def read_onehot_dict(path, filename="onehot_dict.json"):
+    """
+    read one hot dict from json file
+    """
+    filename = osp.join(path, filename)
+    if not osp.exists(filename):
+        raise FileNotFoundError(filename, " not found.")
+
+    with open(filename, "r") as file:
+        data = json.load(file)
+
+    return data
 
 
 def generate_deg(dataset):

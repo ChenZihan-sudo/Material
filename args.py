@@ -18,6 +18,15 @@ args["max_cutoff_distance"] = 5.0
 args["chunk_size"] = 1000
 args["num_chunks"] = None
 
+# * For hypothesis dataset
+args["hypothesis_dataset"] = {}
+hypo_args = args["hypothesis_dataset"]
+hypo_args["scales"] = [0.96, 0.98, 1.00, 1.02, 1.04]
+hypo_args["atomic_numbers"] = [58, 27, 29]
+hypo_args["data_filename"] = "hypo_data"
+# hypo_args["split_data"] =
+# hypo_args["split_num"] =
+
 # random split dataset
 args["trainset_ratio"] = 0.6
 args["valset_ratio"] = 0.2
