@@ -36,6 +36,12 @@ def plot_training_progress(
     if epoch % split != 0 and res_path is None:
         return
 
+    plt.figure(figsize=(8, 6))
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Loss vs. Epoch during Training")
+    plt.grid(True)
+
     lw = 0.7  # linewidth
     ms = 0.7  # markersize
 
