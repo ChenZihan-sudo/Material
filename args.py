@@ -9,8 +9,9 @@ DATASET_PROCESSED_DIR = osp.join("{}".format(DATASET_DIR), "processed")
 
 args = {}
 
-args["raw_dir"] = DATASET_RAW_DIR
-args["processed_dir"] = DATASET_PROCESSED_DIR
+args["dataset_dir"] = DATASET_DIR
+args["dataset_raw_dir"] = DATASET_RAW_DIR
+args["dataset_processed_dir"] = DATASET_PROCESSED_DIR
 
 args["max_cutoff_distance"] = 5.0
 
@@ -25,8 +26,10 @@ hypo_args["scales"] = [0.96, 0.98, 1.00, 1.02, 1.04]
 hypo_args["atomic_numbers"] = [58, 27, 29]
 # meta data filename
 hypo_args["data_filename"] = "hypo_data"
-# split dataset to multiple data block, no split if set 1
+# split dataset to multiple data block
 hypo_args["split_data"] = 10
+# for large dataset
+hypo_args["data_dir"] = osp.join("{}".format(DATASET_PROCESSED_DIR), "hypo_data")
 
 # random split dataset
 args["trainset_ratio"] = 0.6

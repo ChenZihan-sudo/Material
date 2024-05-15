@@ -8,7 +8,7 @@ import ase.io
 import numpy as np
 import torch
 from tqdm import tqdm
-from torch_geometric.data import Data, Dataset
+from torch_geometric.data import Data, Dataset, InMemoryDataset
 from mp_api.client import MPRester
 from torch_geometric.utils import dense_to_sparse, add_self_loops
 from torch.utils.data import random_split, Subset
@@ -19,6 +19,11 @@ import gc
 
 from args import *
 from utils import *
+
+
+##################################################################
+# For Material Project Dataset
+##################################################################
 
 
 # Download compounds raw data from the Material Project
@@ -159,21 +164,17 @@ def raw_data_process(raw_data=None) -> list:
         json.dump(parameter, f)
 
     # print(data_list[0])
-
-    torch.save(data_list, osp.join("{}".format(DATASET_PROCESSED_DIR), "data.pt"))
-
     return data_list
 
 
 # The Material Project Dataset
-# TODO: add dataset on InDataMemory
-class MPDataset(Dataset):
-    def __init__(self, root, args, transform=None, pre_transform=None, pre_filter=None):
+class MPDataset(InMemoryDataset):
+    def __init__(self, args, transform=None, pre_transform=None, pre_filter=None):
         self.args = args
-        super().__init__(root, transform, pre_transform, pre_filter)
+        super().__init__(args["dataset_dir"], transform, pre_transform, pre_filter)
 
         path = osp.join(self.processed_dir, "data.pt")
-        self.data = torch.load(path)
+        self.load(path)
 
     # Skip process if file exist
     @property
@@ -196,11 +197,11 @@ class MPDataset(Dataset):
 
     @property
     def raw_dir(self) -> str:
-        return self.args["raw_dir"]
+        return self.args["dataset_raw_dir"]
 
     @property
     def processed_dir(self) -> str:
-        return self.args["processed_dir"]
+        return self.args["dataset_processed_dir"]
 
     def download(self):
         print("Downloading raw dataset...")
@@ -213,11 +214,8 @@ class MPDataset(Dataset):
         data_list = raw_data_process()
         self.data = data_list
 
-    def len(self) -> int:
-        return len(self.data)
-
-    def get(self, idx) -> any:
-        return self.data[idx]
+        path = osp.join(self.processed_dir, "data.pt")
+        self.save(data_list, path)
 
 
 def random_split_dataset(dataset, lengths: Sequence[int | float] = None, seed=None) -> list[Subset]:
@@ -228,11 +226,14 @@ def random_split_dataset(dataset, lengths: Sequence[int | float] = None, seed=No
 
 
 def make_dataset():
-    dataset = MPDataset(DATASET_DIR, args)
+    dataset = MPDataset(args)
     lengths = [args["trainset_ratio"], args["testset_ratio"], args["valset_ratio"]]
     train_dataset, validation_dataset, test_dataset = random_split_dataset(dataset, lengths=lengths, seed=args["split_dataset_seed"])
     return train_dataset, validation_dataset, test_dataset
 
+
+##################################################################
+##################################################################
 
 ##################################################################
 # For hypothesis dataset
@@ -348,20 +349,15 @@ def get_one_hypothesis_compound(compound, onehot_dict):
     return data
 
 
-# TODO: 如果raw_data存在则直接使用，而不是从文件中读出
-def make_hypothesis_compounds_dataset(args=args, split_num=10):
+def make_hypothesis_compounds_dataset(args, split_num=10):
     """
     Make hypothesis compounds
 
     Args:
-        `args`: global arguments
+        `args`: parameters
         `split_num`: specify how many splited blocks
     """
     hypo_args = args["hypothesis_dataset"]
-    file_path = osp.join(args["processed_dir"], hypo_args["data_filename"])
-    # if osp.exists(file_path) is True:
-    #     print("Warning: hypothesis compounds dataset already exist. Using data in ", file_path)
-    #     return
 
     indices_filename = osp.join("{}".format(DATASET_RAW_DIR), "INDICES")
     assert osp.exists(indices_filename), "INDICES file not exist in " + indices_filename
@@ -369,32 +365,39 @@ def make_hypothesis_compounds_dataset(args=args, split_num=10):
         reader = csv.reader(f)
         indices = [row for row in reader][1:]  # ignore first line of header
 
-    # process progress bar
+    data_dir = hypo_args["data_dir"]
+
     scales = hypo_args["scales"]
     hypo_atomic_numbers = hypo_args["atomic_numbers"]
 
+    # fully permutations of atomic numbers
     num_atomic_numbers_perms = len([i for i in permutations(hypo_atomic_numbers, len(hypo_atomic_numbers))])
-    # print("num_atomic_numbers_perms ", num_atomic_numbers_perms)
+    # hypothesis compounds for single original compound
     single_processed = len(scales) * num_atomic_numbers_perms
-    # print("single_processed ", single_processed)
+    # num all hypothesis compounds
     total_processed = len(indices) * single_processed
-    # print("total_processed ", total_processed)
+
+    # process progress bar
     pbar = tqdm(total=total_processed)
     pbar.set_description("hypothesis compounds dataset processing")
 
     # read one hot dict from {DATASET_RAW_DIR}/onehot_dict.json
     onehot_dict = read_onehot_dict(DATASET_RAW_DIR, "onehot_dict.json")
 
-    # split data if need
-    step = len(indices) // split_num
-    save_point = [i + step - 1 for i in list(range(0, len(indices)))[::step]]
-    save_track = 0
-    print("save points: ", save_point)
+    # # split data if need
+    # step = int(len(indices) / split_num)
+    # save_point = [i + step - 1 for i in list(range(0, len(indices)))[::step]]
+    # if save_point[-1] > len(indices):
+    #     save_point = save_point[:-1]
+    #     save_point[-1] = len(indices) - 1
+    # save_track = 0
+    # print("save points: ", save_point)
 
     # Process single graph data
-    data_list = []
+    hypo_data_track = 1
+    hypo_indices = []
+    # data_list = []
     for i, d in enumerate(indices):
-        # TODO: 如果raw_data存在则直接使用，而不是从文件中读出
         # d: one item in indices (e.g. i=0, d=['1', 'mp-861724', '-0.41328523750000556'])
 
         # read original compound data
@@ -407,30 +410,91 @@ def make_hypothesis_compounds_dataset(args=args, split_num=10):
         # get data list of hypothesis compounds
         hypo_data_list = [get_one_hypothesis_compound(hypo_compound, onehot_dict) for hypo_compound in hypo_compounds]
 
-        # append all of hypo data into data_list
-        for hypo_data in hypo_data_list:
-            data_list.append(hypo_data)
-
-        # save data if need
-        if save_point[save_track] == i:
-            save_track += 1
-            file_path = osp.join(args["processed_dir"], hypo_args["data_filename"] + "_" + str(save_track) + ".pt")
-            print("Data block ", save_track, " saved on ", file_path)
-            torch.save(data_list, file_path)
-            print("Saved data length:", len(data_list))
-            data_list = []
+        # # append all of hypo data into data_list
+        # for hypo_data in hypo_data_list:
+        #     data_list.append(hypo_data)
 
         pbar.update(single_processed)
+        hypo_data_track += single_processed
 
-    # save last data if need
-    if save_track != len(save_point):
-        save_track += 1
-        file_path = osp.join(args["processed_dir"], hypo_args["data_filename"] + "_" + str(save_track) + ".pt")
-        print("Data block ", save_track, " saved on ", file_path)
-        torch.save(data_list, file_path)
-        print("Saved data length:", len(data_list))
+        # save single data to data_dir
+        indices_range = [i for i in range(hypo_data_track - single_processed, hypo_data_track)]
+        for hypo_idx, data in zip(indices_range, hypo_data_list):
+            file_path = osp.join(data_dir, "data_" + str(hypo_idx) + ".pt")
+            torch.save(data, file_path)
+
+        hypo_indices.append(
+            {
+                "hypo_range": [indices_range[0], indices_range[-1]],
+                "origin_idx": idx,
+                "origin_mid": mid,
+            }
+        )
+
+        # # save data if need
+        # if save_point[save_track] == i:
+        #     save_track += 1
+        #     file_path = osp.join(args["dataset_processed_dir"], hypo_args["data_filename"] + "_" + str(save_track) + ".pt")
+        #     print("Data block ", save_track, " saved on ", file_path)
+        #     torch.save(data_list, file_path)
+        #     print("Saved data length:", len(data_list))
+        #     data_list = []
+
+    # Path where the indices csv file is created.
+    indices_filename = osp.join(data_dir, "INDICES.json")
+    with open(indices_filename, "w") as f:
+        json.dump(hypo_indices, f)
 
     pbar.close()
+
+
+class HypoDataset(Dataset):
+    def __init__(self, args, transform=None, pre_transform=None, pre_filter=None):
+        self.args = args
+        self.hypo_args = self.args["hypothesis_dataset"]
+        super().__init__(args["dataset_dir"], transform, pre_transform, pre_filter)
+        # self.load(self.processed_paths[0])
+
+        # path = osp.join(self.processed_dir, "hypo_data_1.pt")
+        # self.data = torch.load(path)
+
+        # in_memory=True will load all data into memory
+        # if in_memory is True:
+
+        # unfold all data block into detached_data_dir
+
+    @property
+    def raw_file_names(self):
+        return ["INDICES"]
+
+    @property
+    def processed_file_names(self):
+        file_names = [self.hypo_args["data_filename"] + "_" + str(i) + ".pt" for i in range(1, hypo_args["split_data"] + 1)]
+        return file_names
+
+    @property
+    def raw_dir(self) -> str:
+        return self.args["dataset_raw_dir"]
+
+    @property
+    def processed_dir(self) -> str:
+        return self.hypo_args["data_dir"]
+
+    def download(self):
+        pass
+
+    def process(self):
+        make_hypothesis_compounds_dataset(self.args, self.hypo_args["split_num"])
+
+    def len(self):
+        return len(self.processed_file_names)
+
+    def get(self, idx):
+        data = torch.load(osp.join(self.processed_dir, f"data_{idx-1}.pt"))
+        return None
+
+    def __getitem__(self, index):
+        print("get_item")
 
 
 ##################################################################
