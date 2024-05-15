@@ -71,10 +71,24 @@ class CEALNetwork(torch.nn.Module):
             divide_input=ceal_args["divide_input"],
             aggMLP=ceal_args["aggMLP"],
         )
-        self.convs = torch.nn.ModuleList([default_conv] if num_layers > 0 else [])
-        # Except the first conv, in_channels of others are out_dim. (out_dim)conv(out_dim)
-        default_conv.in_channels = conv_out_dim
-        [self.convs.append(copy.deepcopy(default_conv)) for i in range(num_layers - 1)]
+        # Except for the first conv, in_channels for last convs are out_dim. (out_dim)conv(out_dim)
+        last_convs = [
+            CEALConv(
+                conv_out_dim,
+                conv_out_dim,
+                aggregators=ceal_args["aggregators"],
+                scalers=ceal_args["scalers"],
+                deg=deg,
+                edge_dim=ceal_args["edge_dim"],
+                towers=ceal_args["towers"],
+                pre_layers=ceal_args["pre_layers"],
+                post_layers=ceal_args["post_layers"],
+                divide_input=ceal_args["divide_input"],
+                aggMLP=ceal_args["aggMLP"],
+            )
+            for i in range(num_layers - 1)
+        ]
+        self.convs = torch.nn.ModuleList(([default_conv] if num_layers > 0 else []) + (last_convs))
         self.bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(conv_out_dim) for i in range(num_layers)])
         self.drop_rate = drop_rate
 

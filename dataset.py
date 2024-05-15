@@ -349,13 +349,12 @@ def get_one_hypothesis_compound(compound, onehot_dict):
 
 
 # TODO: 如果raw_data存在则直接使用，而不是从文件中读出
-def make_hypothesis_compounds_dataset(args=args, split_data=True, split_num=10):
+def make_hypothesis_compounds_dataset(args=args, split_num=10):
     """
     Make hypothesis compounds
 
     Args:
         `args`: global arguments
-        `split_data`: `True` if save dataset into splited multi-blocks
         `split_num`: specify how many splited blocks
     """
     hypo_args = args["hypothesis_dataset"]
@@ -387,11 +386,10 @@ def make_hypothesis_compounds_dataset(args=args, split_data=True, split_num=10):
     onehot_dict = read_onehot_dict(DATASET_RAW_DIR, "onehot_dict.json")
 
     # split data if need
-    if split_data is True:
-        step = len(indices) // 10
-        save_point = [i + step - 1 for i in list(range(0, len(indices)))[::step]]
-        track = 0
-        print("save point: ", save_point)
+    step = len(indices) // split_num
+    save_point = [i + step - 1 for i in list(range(0, len(indices)))[::step]]
+    save_track = 0
+    print("save points: ", save_point)
 
     # Process single graph data
     data_list = []
@@ -413,30 +411,26 @@ def make_hypothesis_compounds_dataset(args=args, split_data=True, split_num=10):
         for hypo_data in hypo_data_list:
             data_list.append(hypo_data)
 
-        # split data if need
-        if split_data is True:
-            if save_point[track] == i:
-                track += 1
-                osp.join(args["processed_dir"], hypo_args["data_filename"] + "_" + track)
-                print("save data to ", )
-                torch.save
+        # save data if need
+        if save_point[save_track] == i:
+            save_track += 1
+            file_path = osp.join(args["processed_dir"], hypo_args["data_filename"] + "_" + str(save_track) + ".pt")
+            print("Data block ", save_track, " saved on ", file_path)
+            torch.save(data_list, file_path)
+            print("Saved data length:", len(data_list))
+            data_list = []
 
         pbar.update(single_processed)
 
-    # split data if need
-    if split_data is True:
-        if track != len(save_point):
-            print("save data on ", i)
+    # save last data if need
+    if save_track != len(save_point):
+        save_track += 1
+        file_path = osp.join(args["processed_dir"], hypo_args["data_filename"] + "_" + str(save_track) + ".pt")
+        print("Data block ", save_track, " saved on ", file_path)
+        torch.save(data_list, file_path)
+        print("Saved data length:", len(data_list))
 
     pbar.close()
-
-    print("num total data: ", len(data_list))
-
-    if split_data is not True:
-        # save the hypothesis compounds into file_path
-        torch.save(data_list, file_path)
-
-    return
 
 
 ##################################################################

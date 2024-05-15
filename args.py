@@ -3,7 +3,7 @@ import os.path as osp
 MP_API_KEY = "j61NN3yuDh8tQWf0OrkachbbUoJ8npVP"
 
 WORK_DIR = "."
-DATASET_DIR = osp.join("{}".format(WORK_DIR), "dataset.spglib==2.3.1")
+DATASET_DIR = osp.join("{}".format(WORK_DIR), "dataset")
 DATASET_RAW_DIR = osp.join("{}".format(DATASET_DIR), "raw")
 DATASET_PROCESSED_DIR = osp.join("{}".format(DATASET_DIR), "processed")
 
@@ -23,9 +23,10 @@ args["hypothesis_dataset"] = {}
 hypo_args = args["hypothesis_dataset"]
 hypo_args["scales"] = [0.96, 0.98, 1.00, 1.02, 1.04]
 hypo_args["atomic_numbers"] = [58, 27, 29]
+# meta data filename
 hypo_args["data_filename"] = "hypo_data"
-# hypo_args["split_data"] =
-# hypo_args["split_num"] =
+# split dataset to multiple data block, no split if set 1
+hypo_args["split_data"] = 10
 
 # random split dataset
 args["trainset_ratio"] = 0.6
@@ -37,7 +38,7 @@ args["split_dataset_seed"] = 1024
 args["batch_size"] = 512
 args["data_loader_shuffle"] = True
 args["data_loader_seed"] = 1024
-args["num_workers"] = 8
+args["num_workers"] = 0
 
 # * GCN model
 args["GCN"] = {}
@@ -72,7 +73,7 @@ ceal_args["divide_input"] = False
 ceal_args["aggMLP"] = True
 # model parameters
 ceal_args["conv_out_dim"] = 50
-ceal_args["num_layers"] = 1
+ceal_args["num_layers"] = 2
 ceal_args["num_pre_fc"] = 1
 ceal_args["pre_fc_dim"] = 100
 ceal_args["num_post_fc"] = 1

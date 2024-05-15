@@ -32,8 +32,7 @@ model_name = "CEAL"
 model_network = model_name + "Network"
 model_args = args[model_name]
 
-# device = get_device()
-device = torch.device("cpu")
+device = get_device()
 
 in_dim = train_dataset[0].x.shape[-1]
 deg = generate_deg(train_dataset).float()
@@ -69,7 +68,7 @@ def save_result_data(
 
     print("Saving data...")
 
-    checkpoint = torch.load(osp.join(result_path, checkpoint_name), map_location=get_device())
+    checkpoint = torch.load(osp.join(result_path, checkpoint_name), map_location=device)
 
     model = checkpoint["model"]
 
