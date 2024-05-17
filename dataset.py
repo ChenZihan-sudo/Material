@@ -15,7 +15,6 @@ from torch.utils.data import random_split, Subset
 from typing import Sequence
 from itertools import permutations
 import copy
-import gc
 
 from args import *
 from utils import *
@@ -384,19 +383,19 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
     # read one hot dict from {DATASET_RAW_DIR}/onehot_dict.json
     onehot_dict = read_onehot_dict(DATASET_RAW_DIR, "onehot_dict.json")
 
-    # # split data if need
-    # step = int(len(indices) / split_num)
-    # save_point = [i + step - 1 for i in list(range(0, len(indices)))[::step]]
-    # if save_point[-1] > len(indices):
-    #     save_point = save_point[:-1]
-    #     save_point[-1] = len(indices) - 1
-    # save_track = 0
-    # print("save points: ", save_point)
+    # split data if need
+    step = int(len(indices) / split_num)
+    save_point = [i + step - 1 for i in list(range(0, len(indices)))[::step]]
+    if save_point[-1] > len(indices):
+        save_point = save_point[:-1]
+        save_point[-1] = len(indices) - 1
+    save_track = 0
+    print("save points: ", save_point)
 
     # Process single graph data
     hypo_data_track = 1
     hypo_indices = []
-    # data_list = []
+    data_list = []
     for i, d in enumerate(indices):
         # d: one item in indices (e.g. i=0, d=['1', 'mp-861724', '-0.41328523750000556'])
 
@@ -410,18 +409,19 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
         # get data list of hypothesis compounds
         hypo_data_list = [get_one_hypothesis_compound(hypo_compound, onehot_dict) for hypo_compound in hypo_compounds]
 
-        # # append all of hypo data into data_list
-        # for hypo_data in hypo_data_list:
-        #     data_list.append(hypo_data)
+        # append all of hypo data into data_list
+        for i, hypo_data in enumerate(hypo_data_list):
+            hypo_data.id = i + hypo_data_track
+            data_list.append(hypo_data)
 
         pbar.update(single_processed)
         hypo_data_track += single_processed
 
-        # save single data to data_dir
         indices_range = [i for i in range(hypo_data_track - single_processed, hypo_data_track)]
-        for hypo_idx, data in zip(indices_range, hypo_data_list):
-            file_path = osp.join(data_dir, "data_" + str(hypo_idx) + ".pt")
-            torch.save(data, file_path)
+        # # save single data to data_dir
+        # for hypo_idx, data in zip(indices_range, hypo_data_list):
+        #     file_path = osp.join(data_dir, "data_" + str(hypo_idx) + ".pt")
+        #     torch.save(data, file_path)
 
         hypo_indices.append(
             {
@@ -431,17 +431,17 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
             }
         )
 
-        # # save data if need
-        # if save_point[save_track] == i:
-        #     save_track += 1
-        #     file_path = osp.join(args["dataset_processed_dir"], hypo_args["data_filename"] + "_" + str(save_track) + ".pt")
-        #     print("Data block ", save_track, " saved on ", file_path)
-        #     torch.save(data_list, file_path)
-        #     print("Saved data length:", len(data_list))
-        #     data_list = []
+        # save data if need
+        if save_point[save_track] == i:
+            save_track += 1
+            file_path = osp.join(data_dir, hypo_args["data_filename"] + "_" + str(save_track) + ".pt")
+            print("Data block ", save_track, " saved on ", file_path)
+            torch.save(data_list, file_path)
+            print("Saved data length:", len(data_list))
+            data_list = []
 
     # Path where the indices csv file is created.
-    indices_filename = osp.join(data_dir, "INDICES.json")
+    indices_filename = osp.join(data_dir, "indices.json")
     with open(indices_filename, "w") as f:
         json.dump(hypo_indices, f)
 
@@ -468,13 +468,13 @@ class HypoDataset(Dataset):
         return ["INDICES"]
 
     @property
-    def processed_file_names(self):
-        file_names = [self.hypo_args["data_filename"] + "_" + str(i) + ".pt" for i in range(1, hypo_args["split_data"] + 1)]
-        return file_names
-
-    @property
     def raw_dir(self) -> str:
         return self.args["dataset_raw_dir"]
+
+    @property
+    def processed_file_names(self):
+        file_names = [self.hypo_args["data_filename"] + "_" + str(i) + ".pt" for i in range(1, hypo_args["split_num"] + 1)]
+        return file_names
 
     @property
     def processed_dir(self) -> str:
@@ -490,11 +490,8 @@ class HypoDataset(Dataset):
         return len(self.processed_file_names)
 
     def get(self, idx):
-        data = torch.load(osp.join(self.processed_dir, f"data_{idx-1}.pt"))
-        return None
-
-    def __getitem__(self, index):
-        print("get_item")
+        data = torch.load(osp.join(self.processed_dir, f"{self.hypo_args['data_filename']}_{idx+1}.pt"))
+        return data
 
 
 ##################################################################

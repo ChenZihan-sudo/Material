@@ -90,7 +90,7 @@ def save_result_data(
 
 
 # result will save on ./results/CEAL/
-result_path = createResultFolder(osp.join("./results", model_name))
+result_path = create_result_folder(osp.join("./results", model_name))
 save_split = 100
 # plot_show_split = 50
 

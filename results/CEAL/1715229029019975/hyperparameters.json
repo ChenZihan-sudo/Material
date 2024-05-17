@@ -1,1 +1,61 @@
-{"raw_dir": "./dataset.spglib==2.3.1/raw", "processed_dir": "./dataset.spglib==2.3.1/processed", "max_cutoff_distance": 5.0, "chunk_size": 1000, "num_chunks": null, "trainset_ratio": 0.6, "valset_ratio": 0.2, "testset_ratio": 0.2, "split_dataset_seed": 512, "batch_size": 1024, "data_loader_shuffle": true, "data_loader_seed": 1024, "num_workers": 8, "GCN": {"conv_out_dim": 100, "num_layers": 1, "num_pre_fc": 2, "pre_fc_dim": 200, "num_post_fc": 2, "post_fc_dim": 200, "dropout_rate": 0.6, "epochs": 1000, "learning_rate": 0.01, "sche_mode": "min", "sche_factor": 0.8, "sche_patience": 20, "sche_min_lr": 1e-08}, "CEAL": {"aggregators": ["sum", "mean", "min", "max", "std"], "scalers": ["identity"], "edge_dim": 1, "towers": 1, "pre_layers": 1, "post_layers": 1, "divide_input": false, "aggMLP": true, "conv_out_dim": 75, "num_layers": 1, "num_pre_fc": 1, "pre_fc_dim": 150, "num_post_fc": 1, "post_fc_dim": 150, "dropout_rate": 0.3, "epochs": 10000, "learning_rate": 0.01, "sche_mode": "min", "sche_factor": 0.8, "sche_patience": 20, "sche_min_lr": 1e-08}}
+{
+    "raw_dir": "./dataset.spglib==2.3.1/raw",
+    "processed_dir": "./dataset.spglib==2.3.1/processed",
+    "max_cutoff_distance": 5.0,
+    "chunk_size": 1000,
+    "num_chunks": null,
+    "trainset_ratio": 0.6,
+    "valset_ratio": 0.2,
+    "testset_ratio": 0.2,
+    "split_dataset_seed": 512,
+    "batch_size": 1024,
+    "data_loader_shuffle": true,
+    "data_loader_seed": 1024,
+    "num_workers": 8,
+    "GCN": {
+        "conv_out_dim": 100,
+        "num_layers": 1,
+        "num_pre_fc": 2,
+        "pre_fc_dim": 200,
+        "num_post_fc": 2,
+        "post_fc_dim": 200,
+        "dropout_rate": 0.6,
+        "epochs": 1000,
+        "learning_rate": 0.01,
+        "sche_mode": "min",
+        "sche_factor": 0.8,
+        "sche_patience": 20,
+        "sche_min_lr": 1e-08
+    },
+    "CEAL": {
+        "aggregators": [
+            "sum",
+            "mean",
+            "min",
+            "max",
+            "std"
+        ],
+        "scalers": [
+            "identity"
+        ],
+        "edge_dim": 1,
+        "towers": 1,
+        "pre_layers": 1,
+        "post_layers": 1,
+        "divide_input": false,
+        "aggMLP": true,
+        "conv_out_dim": 75,
+        "num_layers": 1,
+        "num_pre_fc": 1,
+        "pre_fc_dim": 150,
+        "num_post_fc": 1,
+        "post_fc_dim": 150,
+        "dropout_rate": 0.3,
+        "epochs": 10000,
+        "learning_rate": 0.01,
+        "sche_mode": "min",
+        "sche_factor": 0.8,
+        "sche_patience": 20,
+        "sche_min_lr": 1e-08
+    }
+}

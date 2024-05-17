@@ -68,7 +68,7 @@ for epoch in range(1, 2):
     plot_training_progress(len(train_losses), train_losses, val_losses, test_losses, "Loss vs. Epoch during Training")
     print(progress_msg)
 
-# result_path = createResultFolder()
+# result_path = create_result_folder()
 # save_hyper_parameter(args, result_path)
 # save_train_progress(epochs, train_losses, val_losses, test_losses, result_path)
 # test_loss, test_out, test_y = test_evaluations(model, test_loader, test_dataset, device, ret_data=True)

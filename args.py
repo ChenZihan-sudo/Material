@@ -27,7 +27,7 @@ hypo_args["atomic_numbers"] = [58, 27, 29]
 # meta data filename
 hypo_args["data_filename"] = "hypo_data"
 # split dataset to multiple data block
-hypo_args["split_data"] = 10
+hypo_args["split_num"] = 10
 # for large dataset
 hypo_args["data_dir"] = osp.join("{}".format(DATASET_PROCESSED_DIR), "hypo_data")
 

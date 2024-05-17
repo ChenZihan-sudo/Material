@@ -86,7 +86,7 @@ def save_hyper_parameter(hyper_dict, result_path, hyper_para_filename="hyperpara
 
 
 # Create result folder with ns timestamp (e.g. ./results/1712654332689967)
-def createResultFolder(results_path="./results") -> str:
+def create_result_folder(results_path="./results") -> str:
     isExist = osp.exists(results_path)
     if not isExist:
         os.makedirs(results_path)

@@ -89,6 +89,7 @@ class CEALNetwork(torch.nn.Module):
             for i in range(num_layers - 1)
         ]
         self.convs = torch.nn.ModuleList(([default_conv] if num_layers > 0 else []) + (last_convs))
+        print(self.convs)
         self.bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(conv_out_dim) for i in range(num_layers)])
         self.drop_rate = drop_rate
 
