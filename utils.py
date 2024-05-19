@@ -294,7 +294,7 @@ def make_onehot_dict(sets):
 
     filename = osp.join("{}".format(DATASET_RAW_DIR), "onehot_dict.json")
     with open(filename, "w") as file:
-        json.load(file)
+        json.dump(dict, file)
 
     return dict
 
