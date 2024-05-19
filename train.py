@@ -51,7 +51,9 @@ def test_evaluations(model, data_loader, dataset, device, ret_data=False):
     with torch.no_grad():
         for i, data in enumerate(data_loader):
             data = data.to(device)
+            print(1)
             out = model(data)
+            print(out.squeeze(), data.y)
             total_loss += (out.squeeze() - data.y).abs().sum().item()
 
             if ret_data is True:

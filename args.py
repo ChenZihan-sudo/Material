@@ -19,6 +19,11 @@ args["max_cutoff_distance"] = 5.0
 args["chunk_size"] = 1000
 args["num_chunks"] = None
 
+# * result path
+args["result_path"] = "./results"
+
+args["device"] = "cpu"
+
 # * For hypothesis dataset
 args["hypothesis_dataset"] = {}
 hypo_args = args["hypothesis_dataset"]

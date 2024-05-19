@@ -13,7 +13,12 @@ from torch_geometric.utils import degree
 
 
 def get_device() -> str:
-    return torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
+    device = None
+    if "device" in args:
+        device = torch.device(args["device"])
+    else:
+        device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
+    return device
 
 
 # For dataloader
