@@ -404,14 +404,17 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
         filename = osp.join("{}".format(DATASET_RAW_DIR), "CONFIG_" + idx + ".poscar")
         original_compound = ase_read(filename, format="vasp")
 
+        print(original_compound)
+        
         # get hypothesis ase compounds
         hypo_compounds = get_ase_hypothesis_compounds(scales, hypo_atomic_numbers, original_compound)
+        print(hypo_compounds)
         # get data list of hypothesis compounds
         hypo_data_list = [get_one_hypothesis_compound(hypo_compound, onehot_dict) for hypo_compound in hypo_compounds]
 
         # append all of hypo data into data_list
-        for i, hypo_data in enumerate(hypo_data_list):
-            hypo_data.id = i + hypo_data_track
+        for j, hypo_data in enumerate(hypo_data_list):
+            hypo_data.id = j + hypo_data_track
             data_list.append(hypo_data)
 
         pbar.update(single_processed)
@@ -431,19 +434,22 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
             }
         )
 
-        # save data if need
-        if save_point[save_track] == i:
-            save_track += 1
-            file_path = osp.join(data_dir, hypo_args["data_filename"] + "_" + str(save_track) + ".pt")
-            print("Data block ", save_track, " saved on ", file_path)
-            torch.save(data_list, file_path)
-            print("Saved data length:", len(data_list))
-            data_list = []
+        if i == 1:
+            break
+
+        # # save data if need
+        # if save_point[save_track] == i:
+        #     save_track += 1
+        #     file_path = osp.join(data_dir, hypo_args["data_filename"] + "_" + str(save_track) + ".pt")
+        #     print("Data block ", save_track, " saved on ", file_path)
+        #     torch.save(data_list, file_path)
+        #     print("Saved data length:", len(data_list))
+        #     data_list = []
 
     # Path where the indices csv file is created.
-    indices_filename = osp.join(data_dir, "indices.json")
-    with open(indices_filename, "w") as f:
-        json.dump(hypo_indices, f)
+    # indices_filename = osp.join(data_dir, "indices.json")
+    # with open(indices_filename, "w") as f:
+    #     json.dump(hypo_indices, f)
 
     pbar.close()
 

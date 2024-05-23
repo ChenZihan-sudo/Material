@@ -22,7 +22,7 @@ args["num_chunks"] = None
 # * result path
 args["result_path"] = "./results"
 
-args["device"] = "cpu"
+args["device"] = "cuda"
 
 # * For hypothesis dataset
 args["hypothesis_dataset"] = {}
