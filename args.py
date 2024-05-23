@@ -28,7 +28,7 @@ args["device"] = "cuda"
 args["hypothesis_dataset"] = {}
 hypo_args = args["hypothesis_dataset"]
 hypo_args["scales"] = [0.96, 0.98, 1.00, 1.02, 1.04]
-hypo_args["atomic_numbers"] = [58, 27, 29]
+hypo_args["atomic_numbers"] = [58, 27, 29]  # Ce,Co,Cu
 # meta data filename
 hypo_args["data_filename"] = "hypo_data"
 # split dataset to multiple data block

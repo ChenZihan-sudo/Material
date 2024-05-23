@@ -258,9 +258,10 @@ def get_replace_atomic_numbers(compound, target_atomic_numbers):
     replace_atomic_numbers = []
     for j, target in enumerate(targets):
         array = np.array(np_atomic_numbers)
+        final_array = np.zeros_like(array)
         for i, d in enumerate(set_atomic_numbers):
-            array[array == d] = target[i]
-        replace_atomic_numbers.append(array)
+            final_array[array == d] = target[i]
+        replace_atomic_numbers.append(final_array)
     return replace_atomic_numbers
 
 
@@ -396,6 +397,8 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
     hypo_data_track = 1
     hypo_indices = []
     data_list = []
+
+    count = 0
     for i, d in enumerate(indices):
         # d: one item in indices (e.g. i=0, d=['1', 'mp-861724', '-0.41328523750000556'])
 
@@ -404,38 +407,76 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
         filename = osp.join("{}".format(DATASET_RAW_DIR), "CONFIG_" + idx + ".poscar")
         original_compound = ase_read(filename, format="vasp")
 
-        print(original_compound)
-        
+        # print(idx, mid, y, original_compound, original_compound)
+
         # get hypothesis ase compounds
         hypo_compounds = get_ase_hypothesis_compounds(scales, hypo_atomic_numbers, original_compound)
-        print(hypo_compounds)
-        # get data list of hypothesis compounds
-        hypo_data_list = [get_one_hypothesis_compound(hypo_compound, onehot_dict) for hypo_compound in hypo_compounds]
+        # print("original one", original_compound)
+        # for i in hypo_compounds:
+        #     if set(i.get_atomic_numbers()).__len__() != 3:
+        #         count += 1
+        #         print(count, i.symbols)
+        sss = [
+            0.96,
+            0.96,
+            0.96,
+            0.96,
+            0.96,
+            0.96,
+            0.98,
+            0.98,
+            0.98,
+            0.98,
+            0.98,
+            0.98,
+            1.00,
+            1.00,
+            1.00,
+            1.00,
+            1.00,
+            1.00,
+            1.02,
+            1.02,
+            1.02,
+            1.02,
+            1.02,
+            1.02,
+            1.04,
+            1.04,
+            1.04,
+            1.04,
+            1.04,
+            1.04,
+        ]
+        for k, j in zip(hypo_compounds, sss):
+            if j != round(k.get_volume() / original_compound.get_volume(), 2):
+                count += 1
+                print(count, k)
 
-        # append all of hypo data into data_list
-        for j, hypo_data in enumerate(hypo_data_list):
-            hypo_data.id = j + hypo_data_track
-            data_list.append(hypo_data)
+        # # get data list of hypothesis compounds
+        # hypo_data_list = [get_one_hypothesis_compound(hypo_compound, onehot_dict) for hypo_compound in hypo_compounds]
+
+        # # append all of hypo data into data_list
+        # for j, hypo_data in enumerate(hypo_data_list):
+        #     hypo_data.id = j + hypo_data_track
+        #     data_list.append(hypo_data)
 
         pbar.update(single_processed)
-        hypo_data_track += single_processed
+        # hypo_data_track += single_processed
 
-        indices_range = [i for i in range(hypo_data_track - single_processed, hypo_data_track)]
-        # # save single data to data_dir
-        # for hypo_idx, data in zip(indices_range, hypo_data_list):
-        #     file_path = osp.join(data_dir, "data_" + str(hypo_idx) + ".pt")
-        #     torch.save(data, file_path)
+        # indices_range = [i for i in range(hypo_data_track - single_processed, hypo_data_track)]
+        # # # save single data to data_dir
+        # # for hypo_idx, data in zip(indices_range, hypo_data_list):
+        # #     file_path = osp.join(data_dir, "data_" + str(hypo_idx) + ".pt")
+        # #     torch.save(data, file_path)
 
-        hypo_indices.append(
-            {
-                "hypo_range": [indices_range[0], indices_range[-1]],
-                "origin_idx": idx,
-                "origin_mid": mid,
-            }
-        )
-
-        if i == 1:
-            break
+        # hypo_indices.append(
+        #     {
+        #         "hypo_range": [indices_range[0], indices_range[-1]],
+        #         "origin_idx": idx,
+        #         "origin_mid": mid,
+        #     }
+        # )
 
         # # save data if need
         # if save_point[save_track] == i:
@@ -445,6 +486,9 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
         #     torch.save(data_list, file_path)
         #     print("Saved data length:", len(data_list))
         #     data_list = []
+
+        # if i == 10:
+        #     break
 
     # Path where the indices csv file is created.
     # indices_filename = osp.join(data_dir, "indices.json")
