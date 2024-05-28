@@ -1,13 +1,11 @@
 *.pt
 !results/*/*/checkpoint.pt
 
-# /dataset*
-# !dataset*
-dataset*/processed
-
-
 # *.poscar
 # *.cif
+
+/dataset
+/dataset.spglib*
 
 /reference
 

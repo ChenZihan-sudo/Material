@@ -3,7 +3,7 @@ import os.path as osp
 MP_API_KEY = "j61NN3yuDh8tQWf0OrkachbbUoJ8npVP"
 
 WORK_DIR = "."
-DATASET_DIR = osp.join("{}".format(WORK_DIR), "dataset")
+DATASET_DIR = osp.join("{}".format(WORK_DIR), "dataset.spglib==2.4.0")
 DATASET_RAW_DIR = osp.join("{}".format(DATASET_DIR), "raw")
 DATASET_PROCESSED_DIR = osp.join("{}".format(DATASET_DIR), "processed")
 
@@ -15,13 +15,17 @@ args["dataset_processed_dir"] = DATASET_PROCESSED_DIR
 
 args["max_cutoff_distance"] = 5.0
 
-# For dataset of Material Project
+# * For dataset of Material Project
 args["chunk_size"] = 1000
 args["num_chunks"] = None
+args["keep_data_from"] = "./dataset/raw/INDICES"
+args["onehot_gen"] = False
+args["onehot_range"] = range(1, 101)
 
 # * result path
 args["result_path"] = "./results"
 
+# * device
 args["device"] = "cuda"
 
 # * For hypothesis dataset
@@ -36,13 +40,13 @@ hypo_args["split_num"] = 10
 # for large dataset
 hypo_args["data_dir"] = osp.join("{}".format(DATASET_PROCESSED_DIR), "hypo_data")
 
-# random split dataset
+# * random split dataset
 args["trainset_ratio"] = 0.6
 args["valset_ratio"] = 0.2
 args["testset_ratio"] = 0.2
 args["split_dataset_seed"] = 1024
 
-# data loader
+# * data loader
 args["batch_size"] = 512
 args["data_loader_shuffle"] = True
 args["data_loader_seed"] = 1024

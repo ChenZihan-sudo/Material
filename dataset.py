@@ -26,8 +26,19 @@ from utils import *
 
 
 # Download compounds raw data from the Material Project
-def download_raw_data(exclude_elements=["O"], num_elements=(3, 3)):
+def download_raw_data(exclude_elements=["O"], num_elements=(3, 3), keep_data_from=None):
+    """
+    Args:
+    - keep_data_from: filter compounds data and sort id from the file `INDICE`
+    """
     mpr = MPRester(MP_API_KEY)
+
+    material_ids = None
+    if keep_data_from is not None:
+        with open(keep_data_from) as f:
+            reader = csv.reader(f)
+            indices = [row[1] for row in reader][1:]  # ignore first line of header
+            material_ids = dict(zip(indices, range(1, len(indices) + 1)))
 
     raw_datasets = mpr.materials.summary.search(
         fields=["material_id", "formation_energy_per_atom", "structure"],
@@ -36,6 +47,12 @@ def download_raw_data(exclude_elements=["O"], num_elements=(3, 3)):
         chunk_size=args["chunk_size"],
         num_chunks=args["num_chunks"],
     )
+
+    if keep_data_from is not None:
+        raw_datasets = [i for i in filter(lambda doc: doc.material_id in material_ids, raw_datasets)]
+        print(len(raw_datasets))
+        raw_datasets.sort(key=lambda doc: material_ids[doc.material_id])
+
     return raw_datasets
 
 
@@ -111,7 +128,12 @@ def read_one_compound_info(compound_data) -> Data:
 
 
 # Process raw data and store them as data.pt in {DATASET_PROCESSED_DIR}
-def raw_data_process(raw_data=None) -> list:
+def raw_data_process(onehot_gen=True, onehot_range=None) -> list:
+    """
+    Args:
+    - onehot_gen: set `True` will generate atomic number onehot from all compoundd. Otherwise, use `onehot_range`.
+    - onehot_range: if `onehot_gen` is not `True`, onehot of atomic number will use `range` instead.
+    """
     print("Raw data processing...")
 
     indices_filename = osp.join("{}".format(DATASET_RAW_DIR), "INDICES")
@@ -129,18 +151,20 @@ def raw_data_process(raw_data=None) -> list:
     atomic_number_set = set()
     for i, d in enumerate(indices):
         # d: one item in indices (e.g. i=0, d=['1', 'mp-861724', '-0.41328523750000556'])
-        # TODO: 如果raw_data存在则直接使用，而不是从文件中读出
         data = read_one_compound_info(d)
-        for a in data.atomic_numbers:
-            atomic_number_set.add(a)
+        if onehot_gen is True:
+            for a in data.atomic_numbers:
+                atomic_number_set.add(a)
         data_list.append(data)
         pbar.update(1)
-        # print(data)
-        # if i == 0:
-        #     break
+        print(data)
+        if i == 0:
+            break
     pbar.close()
 
     # Create one hot for data.x
+    if onehot_gen is not None:
+        atomic_number_set = set(list(onehot_range))
     onehot_dict = make_onehot_dict(atomic_number_set)
     for i, d in enumerate(data_list):
         d.x = torch.tensor(np.vstack([onehot_dict[i] for i in d.atomic_numbers]).astype(np.float32))
@@ -162,7 +186,7 @@ def raw_data_process(raw_data=None) -> list:
     with open(filename, "w") as f:
         json.dump(parameter, f)
 
-    # print(data_list[0])
+    print(data_list[0].x.tolist())
     return data_list
 
 
@@ -183,7 +207,7 @@ class MPDataset(InMemoryDataset):
     # Get all filenames from {DATASET_RAW_DIR}/INDICES, skip download if those files exist
     @property
     def raw_file_names(self) -> list[str]:
-        filenames = ["INDICES", "PARAMETERS"]
+        filenames = ["INDICES"]
         # indices_filename = osp.join("{}".format(DATASET_RAW_DIR), "INDICES")
         # if not osp.exists(indices_filename):
         #     return []
@@ -204,13 +228,11 @@ class MPDataset(InMemoryDataset):
 
     def download(self):
         print("Downloading raw dataset...")
-        self.raw_data = download_raw_data()
-        raw_data_preprocess(self.raw_dir, self.raw_data)
+        raw_data = download_raw_data(keep_data_from=self.args["keep_data_from"])
+        raw_data_preprocess(self.raw_dir, raw_data)
 
     def process(self):
-        # TODO: 如果raw_data存在则直接使用，而不是从文件中读出
-        # raw_data = self.raw_data if isinstance(self.raw_data) else None
-        data_list = raw_data_process()
+        data_list = raw_data_process(onehot_gen=args["onehot_gen"], onehot_range=args["onehot_range"])
         self.data = data_list
 
         path = osp.join(self.processed_dir, "data.pt")
