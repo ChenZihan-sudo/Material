@@ -5,7 +5,10 @@
 # *.cif
 
 /dataset
+/dataset/raw/*.poscar
+
 /dataset.spglib*
+/dataset.spglib*/raw/*.poscar
 
 /reference
 
