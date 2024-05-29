@@ -275,15 +275,17 @@ def get_replace_atomic_numbers(compound, target_atomic_numbers):
     targets = [list(i) for i in permutations(target_atomic_numbers, len(target_atomic_numbers))]
 
     np_atomic_numbers = compound.get_atomic_numbers()
-    set_atomic_numbers = [i for i in set(np_atomic_numbers)]
+    # set_atomic_numbers = [i for i in set(np_atomic_numbers)]
 
     replace_atomic_numbers = []
     for j, target in enumerate(targets):
         array = np.array(np_atomic_numbers)
-        final_array = np.zeros_like(array)
-        for i, d in enumerate(set_atomic_numbers):
-            final_array[array == d] = target[i]
-        replace_atomic_numbers.append(final_array)
+        # final_array = np.zeros_like(array)
+        # for i, d in enumerate(set_atomic_numbers):
+        #     final_array[array == d] = target[i]
+        # replace_atomic_numbers.append(final_array)
+        # TODO: remove this
+        replace_atomic_numbers.append(array)
     return replace_atomic_numbers
 
 
@@ -304,13 +306,7 @@ def get_ase_hypothesis_compounds(scales, hypo_atomic_numbers, original_compound)
     return `hypothesis_compounds` with ase compounds
     """
     # get replaced atomic numbers
-    # print("------")
-    # print(scales, hypo_atomic_numbers)
-    # print(original_compound)
     hypo_atomic_numbers = get_replace_atomic_numbers(original_compound, hypo_atomic_numbers)
-    # print(scales, hypo_atomic_numbers)
-    # print("origin one,", "volume:", round(original_compound.get_volume(), 2), original_compound)
-    # print("------")
 
     # get scaled compounds
     scaled_compounds = []
@@ -367,6 +363,9 @@ def get_one_hypothesis_compound(compound, onehot_dict):
     # get onehot x
     atomic_numbers = compound.get_atomic_numbers()
     data.x = torch.tensor(np.vstack([onehot_dict[str(i)] for i in atomic_numbers]).astype(np.float32))
+    # print("================")
+    # print(compound)
+    # print(data.x.tolist())
 
     return data
 
@@ -419,103 +418,60 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
     hypo_data_track = 1
     hypo_indices = []
     data_list = []
-
-    count = 0
     for i, d in enumerate(indices):
-        # d: one item in indices (e.g. i=0, d=['1', 'mp-861724', '-0.41328523750000556'])
 
+        # i = 355
+        # d = indices[i]
+
+        # d: one item in indices (e.g. i=0, d=['1', 'mp-861724', '-0.41328523750000556'])
         # read original compound data
         idx, mid, y = d[0], d[1], d[2]
         filename = osp.join("{}".format(DATASET_RAW_DIR), "CONFIG_" + idx + ".poscar")
         original_compound = ase_read(filename, format="vasp")
 
-        # print(idx, mid, y, original_compound, original_compound)
-
         # get hypothesis ase compounds
         hypo_compounds = get_ase_hypothesis_compounds(scales, hypo_atomic_numbers, original_compound)
-        # print("original one", original_compound)
-        # for i in hypo_compounds:
-        #     if set(i.get_atomic_numbers()).__len__() != 3:
-        #         count += 1
-        #         print(count, i.symbols)
-        sss = [
-            0.96,
-            0.96,
-            0.96,
-            0.96,
-            0.96,
-            0.96,
-            0.98,
-            0.98,
-            0.98,
-            0.98,
-            0.98,
-            0.98,
-            1.00,
-            1.00,
-            1.00,
-            1.00,
-            1.00,
-            1.00,
-            1.02,
-            1.02,
-            1.02,
-            1.02,
-            1.02,
-            1.02,
-            1.04,
-            1.04,
-            1.04,
-            1.04,
-            1.04,
-            1.04,
-        ]
-        for k, j in zip(hypo_compounds, sss):
-            if j != round(k.get_volume() / original_compound.get_volume(), 2):
-                count += 1
-                print(count, k)
 
-        # # get data list of hypothesis compounds
-        # hypo_data_list = [get_one_hypothesis_compound(hypo_compound, onehot_dict) for hypo_compound in hypo_compounds]
+        # get data list of hypothesis compounds
+        hypo_data_list = [get_one_hypothesis_compound(hypo_compound, onehot_dict) for hypo_compound in hypo_compounds]
 
-        # # append all of hypo data into data_list
-        # for j, hypo_data in enumerate(hypo_data_list):
-        #     hypo_data.id = j + hypo_data_track
-        #     data_list.append(hypo_data)
+        # append all of hypo data into data_list
+        for j, hypo_data in enumerate(hypo_data_list):
+            hypo_data.id = j + hypo_data_track
+            data_list.append(hypo_data)
 
         pbar.update(single_processed)
-        # hypo_data_track += single_processed
+        hypo_data_track += single_processed
 
-        # indices_range = [i for i in range(hypo_data_track - single_processed, hypo_data_track)]
-        # # # save single data to data_dir
-        # # for hypo_idx, data in zip(indices_range, hypo_data_list):
-        # #     file_path = osp.join(data_dir, "data_" + str(hypo_idx) + ".pt")
-        # #     torch.save(data, file_path)
+        # # save single data to data_dir
+        # indices_range = [k for k in range(hypo_data_track - single_processed, hypo_data_track)]
+        # for hypo_idx, data in zip(indices_range, hypo_data_list):
+        #     file_path = osp.join(data_dir, "data_" + str(hypo_idx) + ".pt")
+        #     torch.save(data, file_path)
 
-        # hypo_indices.append(
-        #     {
-        #         "hypo_range": [indices_range[0], indices_range[-1]],
-        #         "origin_idx": idx,
-        #         "origin_mid": mid,
-        #     }
-        # )
+        # save data if need
+        hypo_indices.append(
+            {
+                "hypo_range": [hypo_data_track - single_processed, hypo_data_track - 1],
+                "origin_idx": idx,
+                "origin_mid": mid,
+            }
+        )
+        if save_point[save_track] == i:
+            save_track += 1
+            file_path = osp.join(data_dir, hypo_args["data_filename"] + "_" + str(save_track) + ".pt")
+            print("Data block ", save_track, " saved on ", file_path)
+            torch.save(data_list, file_path)
+            print("Saved data length:", len(data_list))
+            data_list = []
 
-        # # save data if need
-        # if save_point[save_track] == i:
-        #     save_track += 1
-        #     file_path = osp.join(data_dir, hypo_args["data_filename"] + "_" + str(save_track) + ".pt")
-        #     print("Data block ", save_track, " saved on ", file_path)
-        #     torch.save(data_list, file_path)
-        #     print("Saved data length:", len(data_list))
-        #     data_list = []
-
-        # if i == 10:
-        #     break
+        # if i == 1:
+        # break
 
     # Path where the indices csv file is created.
-    # indices_filename = osp.join(data_dir, "indices.json")
-    # with open(indices_filename, "w") as f:
-    #     json.dump(hypo_indices, f)
+    indices_filename = osp.join(data_dir, "indices.json")
+    with open(indices_filename, "w") as f:
+        json.dump(hypo_indices, f)
 
     pbar.close()
 
@@ -525,15 +481,6 @@ class HypoDataset(Dataset):
         self.args = args
         self.hypo_args = self.args["hypothesis_dataset"]
         super().__init__(args["dataset_dir"], transform, pre_transform, pre_filter)
-        # self.load(self.processed_paths[0])
-
-        # path = osp.join(self.processed_dir, "hypo_data_1.pt")
-        # self.data = torch.load(path)
-
-        # in_memory=True will load all data into memory
-        # if in_memory is True:
-
-        # unfold all data block into detached_data_dir
 
     @property
     def raw_file_names(self):
@@ -571,37 +518,3 @@ class HypoDataset(Dataset):
 
 if __name__ == "__main__":
     make_dataset()
-
-# make_dataset()
-# raw_data_process()
-# download_raw_data()
-
-
-# def random_split_dataset2(dataset, train_ratio=0.7, val_ratio=0.15, test_ratio=0.15, lengths=None, shuffle=True, seed=None) -> list[Dataset]:
-#     """
-#     Split the dataset into train, valid and test datasets by ratio or length. \n
-#     Provide lengths (e.g. lengths=[6000,2000,2000]) will split by length provided. \n
-#     Otherwise split by ratio.
-#     """
-#     dataset_len = dataset.len()
-
-#     lengths_mode = True if (isinstance(lengths, list) and len(lengths) == 3) else False
-
-#     if lengths_mode is False and train_ratio + val_ratio + test_ratio != 1.0:
-#         raise ValueError("The total ratio of split dataset is not 1.0.")
-
-#     train_len = int(lengths[0] if lengths_mode else dataset_len * train_ratio)
-#     val_len = int(lengths[1] if lengths_mode else dataset_len * val_ratio)
-#     test_len = int(lengths[2] if lengths_mode else dataset_len * test_ratio)
-
-#     idx = list(range(dataset_len))
-
-#     if shuffle is True:
-#         random.seed(None)
-#         random.shuffle(idx)
-
-#     train_dataset = dataset.index_select(idx[:train_len])
-#     validation_dataset = dataset.index_select(idx[train_len : train_len + val_len])
-#     test_dataset = dataset.index_select(idx[train_len + val_len : train_len + val_len + test_len])
-
-#     return train_dataset, validation_dataset, test_dataset
