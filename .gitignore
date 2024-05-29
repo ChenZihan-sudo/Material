@@ -4,10 +4,10 @@
 # *.poscar
 # *.cif
 
-/dataset
+/dataset/processed
 /dataset/raw/*.poscar
 
-/dataset.spglib*
+/dataset.spglib*/processed
 /dataset.spglib*/raw/*.poscar
 
 /reference
