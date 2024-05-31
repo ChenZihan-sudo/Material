@@ -128,11 +128,11 @@ def read_one_compound_info(compound_data) -> Data:
 
 
 # Process raw data and store them as data.pt in {DATASET_PROCESSED_DIR}
-def raw_data_process(onehot_gen=True, onehot_range=None) -> list:
+def raw_data_process(onehot_gen=True, onehot_range: list = None) -> list:
     """
     Args:
     - onehot_gen: set `True` will generate atomic number onehot from all compoundd. Otherwise, use `onehot_range`.
-    - onehot_range: if `onehot_gen` is not `True`, onehot of atomic number will use `range` instead.
+    - onehot_range: if `onehot_gen` is not `True`, onehot of atomic number will use `range(onehot_range[0],onehot_range[-1])` instead.
     """
     print("Raw data processing...")
 
@@ -157,14 +157,14 @@ def raw_data_process(onehot_gen=True, onehot_range=None) -> list:
                 atomic_number_set.add(a)
         data_list.append(data)
         pbar.update(1)
-        print(data)
-        if i == 0:
-            break
+        # print(data)
+        # if i == 0:
+        #     break
     pbar.close()
 
     # Create one hot for data.x
     if onehot_gen is not None:
-        atomic_number_set = set(list(onehot_range))
+        atomic_number_set = set(list(range(onehot_range[0], onehot_range[-1])))
     onehot_dict = make_onehot_dict(atomic_number_set)
     for i, d in enumerate(data_list):
         d.x = torch.tensor(np.vstack([onehot_dict[i] for i in d.atomic_numbers]).astype(np.float32))
@@ -186,7 +186,7 @@ def raw_data_process(onehot_gen=True, onehot_range=None) -> list:
     with open(filename, "w") as f:
         json.dump(parameter, f)
 
-    print(data_list[0].x.tolist())
+    # print(data_list[0].x.tolist())
     return data_list
 
 
@@ -275,17 +275,17 @@ def get_replace_atomic_numbers(compound, target_atomic_numbers):
     targets = [list(i) for i in permutations(target_atomic_numbers, len(target_atomic_numbers))]
 
     np_atomic_numbers = compound.get_atomic_numbers()
-    # set_atomic_numbers = [i for i in set(np_atomic_numbers)]
+    set_atomic_numbers = [i for i in set(np_atomic_numbers)]
 
     replace_atomic_numbers = []
     for j, target in enumerate(targets):
         array = np.array(np_atomic_numbers)
-        # final_array = np.zeros_like(array)
-        # for i, d in enumerate(set_atomic_numbers):
-        #     final_array[array == d] = target[i]
-        # replace_atomic_numbers.append(final_array)
-        # TODO: remove this
-        replace_atomic_numbers.append(array)
+        final_array = np.zeros_like(array)
+        for i, d in enumerate(set_atomic_numbers):
+            final_array[array == d] = target[i]
+        replace_atomic_numbers.append(final_array)
+        # # TODO: remove this
+        # replace_atomic_numbers.append(array)
     return replace_atomic_numbers
 
 

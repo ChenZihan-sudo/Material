@@ -16,6 +16,8 @@ from args import *
 import copy
 from ceal import CEALConv
 
+from utils import get_device
+
 ceal_args = args["CEAL"]
 gcn_args = args["GCN"]
 
@@ -89,7 +91,7 @@ class CEALNetwork(torch.nn.Module):
             for i in range(num_layers - 1)
         ]
         self.convs = torch.nn.ModuleList(([default_conv] if num_layers > 0 else []) + (last_convs))
-        print(self.convs)
+        # print(self.convs)
         self.bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(conv_out_dim) for i in range(num_layers)])
         self.drop_rate = drop_rate
 
@@ -105,7 +107,7 @@ class CEALNetwork(torch.nn.Module):
         self.out_dim = post_fc_dim if num_post_fc > 0 else conv_out_dim
         self.out_lin = torch.nn.Linear(self.out_dim, 1)
 
-    def forward(self, batch_data):
+    def forward(self, batch_data, node_embedding=False):
         x, edge_index, edge_attr = batch_data.x, batch_data.edge_index, batch_data.edge_attr
         batch = batch_data.batch
 
@@ -123,6 +125,10 @@ class CEALNetwork(torch.nn.Module):
             out = bn(out)
             out = F.relu(out)
             out = F.dropout(out, p=self.drop_rate, training=self.training)
+
+        # get node embedding instead of predicting the result
+        if node_embedding is True:
+            return out
 
         # global pooling
         out = self.pool(out, batch)
@@ -188,7 +194,7 @@ class GCNNetwork(torch.nn.Module):
         self.out_dim = post_fc_dim if num_post_fc > 0 else conv_out_dim
         self.out_lin = torch.nn.Linear(self.out_dim, 1)
 
-    def forward(self, batch_data):
+    def forward(self, batch_data, node_embedding=True):
         x, edge_index, edge_weight = batch_data.x, batch_data.edge_index, batch_data.edge_weight
         batch = batch_data.batch
 
@@ -207,6 +213,10 @@ class GCNNetwork(torch.nn.Module):
             out = F.relu(out)
             out = F.dropout(out, p=self.drop_rate, training=self.training)
 
+        # get node embedding instead of predicting the result
+        if node_embedding is True:
+            return out
+
         # global pooling
         out = self.pool(out, batch)
 
@@ -219,3 +229,28 @@ class GCNNetwork(torch.nn.Module):
         out = self.out_lin(out)
 
         return out
+
+
+def save_model(res_path, model, epoch=None, loss=None, optimizer=None, scheduler=None, model_filename="checkpoint.pt"):
+    model_filename = osp.join(res_path, model_filename)
+    torch.save(
+        {
+            "epoch": epoch,
+            "loss": loss,
+            "model": model,
+            "model_state_dict": model.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "scheduler": scheduler.state_dict(),
+        },
+        model_filename,
+    )
+
+
+def load_model(model_path, file_name="checkpoint.pt", load_dict=False, map_location=get_device()):
+    model_path = osp.join(model_path, file_name)
+    data = torch.load(model_path, map_location=map_location)
+    model = data["model"]
+    if load_dict is True:
+        model.load_state_dict(data["model_state_dict"])
+    model = model.to(map_location)
+    return model, data

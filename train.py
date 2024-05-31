@@ -4,6 +4,8 @@ from dataset import *
 from args import *
 from utils import *
 
+import warnings
+
 
 def make_data_loader(train_set, val_set, test_set) -> list[Dataset]:
 
@@ -51,9 +53,7 @@ def test_evaluations(model, data_loader, dataset, device, ret_data=False):
     with torch.no_grad():
         for i, data in enumerate(data_loader):
             data = data.to(device)
-            print(1)
             out = model(data)
-            print(out.squeeze(), data.y)
             total_loss += (out.squeeze() - data.y).abs().sum().item()
 
             if ret_data is True:
@@ -64,7 +64,10 @@ def test_evaluations(model, data_loader, dataset, device, ret_data=False):
     return loss, res_out, res_y
 
 
+# @deprecated
 def save_model_GCN(epoch, model, optimizer, scheduler, res_path, model_filename="checkpoint.pt"):
+    warnings.simplefilter("once")
+    warnings.warn("this function deprecated, use model.save_model", DeprecationWarning)
     model_filename = osp.join(res_path, model_filename)
     torch.save(
         {
@@ -78,7 +81,10 @@ def save_model_GCN(epoch, model, optimizer, scheduler, res_path, model_filename=
     )
 
 
+# @deprecated
 def save_model_CEAL(epoch, model, optimizer, scheduler, res_path, model_filename="checkpoint.pt"):
+    warnings.simplefilter("once")
+    warnings.warn("this function deprecated, use model.save_model", DeprecationWarning)
     model_filename = osp.join(res_path, model_filename)
     torch.save(
         {

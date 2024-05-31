@@ -20,7 +20,7 @@ args["chunk_size"] = 1000
 args["num_chunks"] = None
 args["keep_data_from"] = "./dataset/raw/INDICES"
 args["onehot_gen"] = False
-args["onehot_range"] = range(1, 101)
+args["onehot_range"] = [1, 101]
 
 # * result path
 args["result_path"] = "./results"
@@ -47,10 +47,10 @@ args["testset_ratio"] = 0.2
 args["split_dataset_seed"] = 1024
 
 # * data loader
-args["batch_size"] = 512
+args["batch_size"] = 200
 args["data_loader_shuffle"] = True
 args["data_loader_seed"] = 1024
-args["num_workers"] = 0
+args["num_workers"] = 4
 
 # * GCN model
 args["GCN"] = {}
@@ -84,13 +84,13 @@ ceal_args["post_layers"] = 1
 ceal_args["divide_input"] = False
 ceal_args["aggMLP"] = True
 # model parameters
-ceal_args["conv_out_dim"] = 50
-ceal_args["num_layers"] = 2
-ceal_args["num_pre_fc"] = 1
-ceal_args["pre_fc_dim"] = 100
-ceal_args["num_post_fc"] = 1
-ceal_args["post_fc_dim"] = 100
-ceal_args["dropout_rate"] = 0.3
+ceal_args["conv_out_dim"] = 100
+ceal_args["num_layers"] = 1
+ceal_args["num_pre_fc"] = 2
+ceal_args["pre_fc_dim"] = 200
+ceal_args["num_post_fc"] = 2
+ceal_args["post_fc_dim"] = 200
+ceal_args["dropout_rate"] = 0.5
 # train
 ceal_args["epochs"] = 10000
 ceal_args["learning_rate"] = 0.01
