@@ -47,7 +47,7 @@ args["testset_ratio"] = 0.2
 args["split_dataset_seed"] = 1024
 
 # * data loader
-args["batch_size"] = 800
+args["batch_size"] = 100
 args["data_loader_shuffle"] = True
 args["data_loader_seed"] = 1024
 args["num_workers"] = 4
@@ -84,18 +84,18 @@ ceal_args["post_layers"] = 1
 ceal_args["divide_input"] = False
 ceal_args["aggMLP"] = True
 # model parameters
-ceal_args["conv_out_dim"] = 75
-ceal_args["num_layers"] = 1
-ceal_args["num_pre_fc"] = 2
+ceal_args["conv_out_dim"] = 100
+ceal_args["num_layers"] = 2
+ceal_args["num_pre_fc"] = 1
 ceal_args["pre_fc_dim"] = 150
-ceal_args["num_post_fc"] = 2
+ceal_args["num_post_fc"] = 1
 ceal_args["post_fc_dim"] = 150
-ceal_args["dropout_rate"] = 0.5
+ceal_args["dropout_rate"] = 0.4
 # train
 ceal_args["epochs"] = 10000
 ceal_args["learning_rate"] = 0.01
 # for ReduceLROnPlateau scheduler
 ceal_args["sche_mode"] = "min"
 ceal_args["sche_factor"] = 0.85
-ceal_args["sche_patience"] = 25
+ceal_args["sche_patience"] = 30
 ceal_args["sche_min_lr"] = 1e-8
