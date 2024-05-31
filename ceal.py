@@ -26,6 +26,7 @@ class CEALConv(MessagePassing):
         post_layers=1,  # post fc layers
         divide_input=False,
         aggMLP=True,
+        aggMLP_factor=1,
         **kwargs,
     ) -> None:
         """
@@ -49,6 +50,7 @@ class CEALConv(MessagePassing):
         self.towers = towers
         self.divide_input = divide_input
         self.aggMLP = aggMLP
+        self.aggMLP_factor = aggMLP_factor
 
         self.F_in = in_channels // towers if divide_input else in_channels
         self.F_out = self.out_channels // towers
@@ -90,7 +92,7 @@ class CEALConv(MessagePassing):
         self.lin = Linear(out_channels, out_channels)
 
         if self.aggMLP:
-            factor = 1  # TODO: make it as a param
+            factor = self.aggMLP_factor
             self.mlp_w0 = Sequential(
                 torch.nn.Linear(self.F_in, round(self.F_in * factor)), ReLU(), torch.nn.Linear(round(self.F_in * factor), self.F_in)
             )

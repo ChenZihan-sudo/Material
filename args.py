@@ -44,13 +44,13 @@ hypo_args["data_dir"] = osp.join("{}".format(DATASET_PROCESSED_DIR), "hypo_data"
 args["trainset_ratio"] = 0.6
 args["valset_ratio"] = 0.2
 args["testset_ratio"] = 0.2
-args["split_dataset_seed"] = 1024
+args["split_dataset_seed"] = 999
 
 # * data loader
-args["batch_size"] = 800
+args["batch_size"] = 1000
 args["data_loader_shuffle"] = True
-args["data_loader_seed"] = 1024
-args["num_workers"] = 4
+args["data_loader_seed"] = 999
+args["num_workers"] = 8
 
 # * GCN model
 args["GCN"] = {}
@@ -83,14 +83,15 @@ ceal_args["pre_layers"] = 1
 ceal_args["post_layers"] = 1
 ceal_args["divide_input"] = False
 ceal_args["aggMLP"] = True
+ceal_args["aggMLP_factor"] = 0.8
 # model parameters
-ceal_args["conv_out_dim"] = 75
-ceal_args["num_layers"] = 1
-ceal_args["num_pre_fc"] = 2
+ceal_args["conv_out_dim"] = 100
+ceal_args["num_layers"] = 2
+ceal_args["num_pre_fc"] = 1
 ceal_args["pre_fc_dim"] = 150
 ceal_args["num_post_fc"] = 2
 ceal_args["post_fc_dim"] = 150
-ceal_args["dropout_rate"] = 0.5
+ceal_args["dropout_rate"] = 0.4
 # train
 ceal_args["epochs"] = 10000
 ceal_args["learning_rate"] = 0.01

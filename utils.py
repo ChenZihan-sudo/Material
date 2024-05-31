@@ -37,6 +37,7 @@ def plot_training_progress(
     title="Loss vs. Epoch during Training",
     res_path=None,
     filename="train_progress.jpeg",
+    threshold=1,
 ):
     if epoch % split != 0 and res_path is None:
         return
@@ -50,7 +51,6 @@ def plot_training_progress(
     lw = 0.7  # linewidth
     ms = 0.7  # markersize
 
-    threshold = 1
     for i in range(len(train_losses)):
         if train_losses[i] > threshold:
             train_losses[i] = threshold
