@@ -72,6 +72,7 @@ class CEALNetwork(torch.nn.Module):
             post_layers=ceal_args["post_layers"],
             divide_input=ceal_args["divide_input"],
             aggMLP=ceal_args["aggMLP"],
+            aggMLP_factor=ceal_args["aggMLP_factor"],
         )
         # Except for the first conv, in_channels for last convs are out_dim. (out_dim)conv(out_dim)
         last_convs = [
@@ -111,7 +112,7 @@ class CEALNetwork(torch.nn.Module):
         x, edge_index, edge_attr = batch_data.x, batch_data.edge_index, batch_data.edge_attr
         batch = batch_data.batch
 
-        out = None
+        out = x
 
         # pre full connect
         for i, lin in enumerate(self.pre_fc):
