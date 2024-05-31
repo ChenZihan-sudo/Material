@@ -3,8 +3,11 @@ import os.path as osp
 MP_API_KEY = "j61NN3yuDh8tQWf0OrkachbbUoJ8npVP"
 
 WORK_DIR = "."
-DATASET_DIR = osp.join("{}".format(WORK_DIR), "dataset.max_cutoff==2.5")
-DATASET_RAW_DIR = osp.join("{}".format(DATASET_DIR), "raw")
+
+DATASET_ORIGIN_DIR = osp.join("{}".format(WORK_DIR), "dataset")
+DATASET_RAW_DIR = osp.join("{}".format(DATASET_ORIGIN_DIR), "raw")
+
+DATASET_DIR = osp.join("{}".format(WORK_DIR), "dataset.max_cutoff==3.0")
 DATASET_PROCESSED_DIR = osp.join("{}".format(DATASET_DIR), "processed")
 
 args = {}
@@ -13,7 +16,7 @@ args["dataset_dir"] = DATASET_DIR
 args["dataset_raw_dir"] = DATASET_RAW_DIR
 args["dataset_processed_dir"] = DATASET_PROCESSED_DIR
 
-args["max_cutoff_distance"] = 2.5
+args["max_cutoff_distance"] = 3.0
 
 # * For dataset of Material Project
 args["chunk_size"] = 1000
@@ -47,7 +50,7 @@ args["testset_ratio"] = 0.2
 args["split_dataset_seed"] = 999
 
 # * data loader
-args["batch_size"] = 1000
+args["batch_size"] = 500
 args["data_loader_shuffle"] = True
 args["data_loader_seed"] = 999
 args["num_workers"] = 8
@@ -83,7 +86,7 @@ ceal_args["pre_layers"] = 1
 ceal_args["post_layers"] = 1
 ceal_args["divide_input"] = False
 ceal_args["aggMLP"] = True
-ceal_args["aggMLP_factor"] = 0.8
+ceal_args["aggMLP_factor"] = 1.0
 # model parameters
 ceal_args["conv_out_dim"] = 100
 ceal_args["num_layers"] = 2
@@ -98,5 +101,5 @@ ceal_args["learning_rate"] = 0.01
 # for ReduceLROnPlateau scheduler
 ceal_args["sche_mode"] = "min"
 ceal_args["sche_factor"] = 0.85
-ceal_args["sche_patience"] = 25
+ceal_args["sche_patience"] = 50
 ceal_args["sche_min_lr"] = 1e-8
