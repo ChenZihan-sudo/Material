@@ -7,7 +7,7 @@ WORK_DIR = "."
 DATASET_ORIGIN_DIR = osp.join("{}".format(WORK_DIR), "dataset")
 DATASET_RAW_DIR = osp.join("{}".format(DATASET_ORIGIN_DIR), "raw")
 
-DATASET_DIR = osp.join("{}".format(WORK_DIR), "dataset.max_cutoff==3.0")
+DATASET_DIR = osp.join("{}".format(WORK_DIR), "dataset.max_cutoff==3.5")
 DATASET_PROCESSED_DIR = osp.join("{}".format(DATASET_DIR), "processed")
 
 args = {}
@@ -16,7 +16,7 @@ args["dataset_dir"] = DATASET_DIR
 args["dataset_raw_dir"] = DATASET_RAW_DIR
 args["dataset_processed_dir"] = DATASET_PROCESSED_DIR
 
-args["max_cutoff_distance"] = 3.0
+args["max_cutoff_distance"] = 3.5
 
 # * For dataset of Material Project
 args["chunk_size"] = 1000
