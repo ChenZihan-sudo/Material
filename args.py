@@ -92,7 +92,7 @@ ceal_args["conv_out_dim"] = 100
 ceal_args["num_layers"] = 2
 ceal_args["num_pre_fc"] = 1
 ceal_args["pre_fc_dim"] = 150
-ceal_args["num_post_fc"] = 2
+ceal_args["num_post_fc"] = 1
 ceal_args["post_fc_dim"] = 150
 ceal_args["dropout_rate"] = 0.4
 # train
@@ -101,5 +101,5 @@ ceal_args["learning_rate"] = 0.01
 # for ReduceLROnPlateau scheduler
 ceal_args["sche_mode"] = "min"
 ceal_args["sche_factor"] = 0.85
-ceal_args["sche_patience"] = 50
+ceal_args["sche_patience"] = 30
 ceal_args["sche_min_lr"] = 1e-8
