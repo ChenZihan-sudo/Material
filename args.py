@@ -3,7 +3,7 @@ import os.path as osp
 MP_API_KEY = "j61NN3yuDh8tQWf0OrkachbbUoJ8npVP"
 
 WORK_DIR = "."
-DATASET_DIR = osp.join("{}".format(WORK_DIR), "dataset.spglib==2.4.0")
+DATASET_DIR = osp.join("{}".format(WORK_DIR), "dataset.max_cutoff==2.5")
 DATASET_RAW_DIR = osp.join("{}".format(DATASET_DIR), "raw")
 DATASET_PROCESSED_DIR = osp.join("{}".format(DATASET_DIR), "processed")
 
@@ -13,7 +13,7 @@ args["dataset_dir"] = DATASET_DIR
 args["dataset_raw_dir"] = DATASET_RAW_DIR
 args["dataset_processed_dir"] = DATASET_PROCESSED_DIR
 
-args["max_cutoff_distance"] = 5.0
+args["max_cutoff_distance"] = 2.5
 
 # * For dataset of Material Project
 args["chunk_size"] = 1000
@@ -47,7 +47,7 @@ args["testset_ratio"] = 0.2
 args["split_dataset_seed"] = 1024
 
 # * data loader
-args["batch_size"] = 200
+args["batch_size"] = 800
 args["data_loader_shuffle"] = True
 args["data_loader_seed"] = 1024
 args["num_workers"] = 4
@@ -56,7 +56,7 @@ args["num_workers"] = 4
 args["GCN"] = {}
 gcn_args = args["GCN"]
 gcn_args["conv_out_dim"] = 100
-gcn_args["num_layers"] = 1
+gcn_args["num_layers"] = 2
 gcn_args["num_pre_fc"] = 2
 gcn_args["pre_fc_dim"] = 200
 gcn_args["num_post_fc"] = 2
@@ -84,12 +84,12 @@ ceal_args["post_layers"] = 1
 ceal_args["divide_input"] = False
 ceal_args["aggMLP"] = True
 # model parameters
-ceal_args["conv_out_dim"] = 100
+ceal_args["conv_out_dim"] = 75
 ceal_args["num_layers"] = 1
 ceal_args["num_pre_fc"] = 2
-ceal_args["pre_fc_dim"] = 200
+ceal_args["pre_fc_dim"] = 150
 ceal_args["num_post_fc"] = 2
-ceal_args["post_fc_dim"] = 200
+ceal_args["post_fc_dim"] = 150
 ceal_args["dropout_rate"] = 0.5
 # train
 ceal_args["epochs"] = 10000

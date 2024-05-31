@@ -10,6 +10,9 @@
 /dataset.spglib*/processed
 /dataset.spglib*/raw/*.poscar
 
+/dataset.max_cutoff*/processed
+/dataset.max_cutoff*/raw/*.poscar
+
 /reference
 
 __pycache__
