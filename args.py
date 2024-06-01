@@ -7,7 +7,7 @@ WORK_DIR = "."
 DATASET_ORIGIN_DIR = osp.join("{}".format(WORK_DIR), "dataset")
 DATASET_RAW_DIR = osp.join("{}".format(DATASET_ORIGIN_DIR), "raw")
 
-DATASET_DIR = osp.join("{}".format(WORK_DIR), "dataset.max_cutoff==3.5")
+DATASET_DIR = osp.join("{}".format(WORK_DIR), "dataset.max_cutoff==4.5")
 DATASET_PROCESSED_DIR = osp.join("{}".format(DATASET_DIR), "processed")
 
 args = {}

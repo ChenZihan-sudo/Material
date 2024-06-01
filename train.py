@@ -7,20 +7,22 @@ from utils import *
 import warnings
 
 
-def make_data_loader(train_set, val_set, test_set) -> list[Dataset]:
+def make_data_loader(
+    train_set, val_set, test_set, batch_size=args["batch_size"], shuffle=args["data_loader_shuffle"], num_workers=args["num_workers"]
+) -> list[Dataset]:
 
     g = torch.Generator().manual_seed(args["data_loader_seed"])
 
     train_data_loader = DataLoader(
         train_set,
-        batch_size=args["batch_size"],
-        shuffle=args["data_loader_shuffle"],
-        num_workers=args["num_workers"],
+        batch_size=batch_size,
+        shuffle=shuffle,
+        num_workers=num_workers,
         generator=g,
         worker_init_fn=worker_init_fn,
     )
-    val_data_loader = DataLoader(val_set, batch_size=args["batch_size"], shuffle=False, num_workers=args["num_workers"])
-    test_data_loader = DataLoader(test_set, batch_size=args["batch_size"], shuffle=False, num_workers=args["num_workers"])
+    val_data_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    test_data_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False, num_workers=num_workers)
 
     return train_data_loader, val_data_loader, test_data_loader
 
