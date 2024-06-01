@@ -30,12 +30,21 @@ class CEALNetwork(torch.nn.Module):
         conv_out_dim=ceal_args["conv_out_dim"],
         num_pre_fc=ceal_args["num_pre_fc"],
         pre_fc_dim=ceal_args["pre_fc_dim"],
+        pre_fc_dim_factor=ceal_args["pre_fc_dim_factor"],
         num_post_fc=ceal_args["num_post_fc"],
         post_fc_dim=ceal_args["post_fc_dim"],
+        post_fc_dim_factor=ceal_args["post_fc_dim_factor"],
         num_layers=ceal_args["num_layers"],
         drop_rate=ceal_args["dropout_rate"],
         **kwargs,
     ):
+        """
+        Args:
+        - pre_fc_dim_factor: not None will ignore `pre_fc_dim` and follow
+        the `in_dim` incresing or decresing to the `conv_in_dim` with `num_pre_fc` layers and `pre_fc_dim_factor`
+        - post_fc_dim_factor: not None will ignore `post_fc_dim` and follow
+        the `conv_out_dim` incresing or decresing to 1 dim with `num_post_fc` layers and `post_fc_dim_factor`
+        """
         super().__init__()
 
         self.deg = deg
@@ -46,20 +55,37 @@ class CEALNetwork(torch.nn.Module):
 
         self.num_pre_fc = num_pre_fc
         self.pre_fc_dim = pre_fc_dim
+        self.pre_fc_dim_factor = pre_fc_dim_factor
 
         self.num_post_fc = num_post_fc
         self.post_fc_dim = post_fc_dim
+        self.post_fc_dim_factor = post_fc_dim_factor
 
         # pre fc
-        self.pre_fc = torch.nn.ModuleList(
-            ([torch.nn.Linear(in_dim, pre_fc_dim)] if num_pre_fc > 0 else [])
-            + [torch.nn.Linear(pre_fc_dim, pre_fc_dim) for i in range(num_pre_fc - 1)]
-        )
-        self.pre_fc_bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(pre_fc_dim) for i in range(num_pre_fc)])
+        if self.pre_fc_dim_factor is not None:
+            dim = self.in_dim
+            dims = []
+            for i in range(self.num_pre_fc):
+                dim = round(dim * self.pre_fc_dim_factor)
+                dims.append(dim)
+            self.pre_fc = torch.nn.ModuleList()
+            self.pre_fc.append(torch.nn.Linear(self.in_dim, dims[0]))
+            for i in range(len(dims) - 1):
+                self.pre_fc.append(torch.nn.Linear(dims[i], dims[i + 1]))
+
+            self.pre_fc_bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(dims[i]) for i in range(len(dims))])
+            self.conv_in_dim = dims[-1] if num_pre_fc > 0 else in_dim
+            # print(self.pre_fc, self.pre_fc_bns, self.conv_in_dim, dims)
+        else:
+            self.pre_fc = torch.nn.ModuleList(
+                ([torch.nn.Linear(in_dim, pre_fc_dim)] if num_pre_fc > 0 else [])
+                + [torch.nn.Linear(pre_fc_dim, pre_fc_dim) for i in range(num_pre_fc - 1)]
+            )
+            self.pre_fc_bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(pre_fc_dim) for i in range(num_pre_fc)])
+            self.conv_in_dim = pre_fc_dim if num_pre_fc > 0 else in_dim
 
         # ceal convs
         # (in_dim)conv(out_dim)->bn->relu->dropout->(out_dim)conv(out_dim)->bn->relu->dropout...
-        self.conv_in_dim = pre_fc_dim if num_pre_fc > 0 else in_dim
         default_conv = CEALConv(
             self.conv_in_dim,
             conv_out_dim,
@@ -99,13 +125,29 @@ class CEALNetwork(torch.nn.Module):
         self.pool = global_mean_pool
 
         # post fc
-        self.post_fc = torch.nn.ModuleList(
-            ([torch.nn.Linear(conv_out_dim, post_fc_dim)] if num_post_fc > 0 else [])
-            + [torch.nn.Linear(post_fc_dim, post_fc_dim) for i in range(num_post_fc - 1)]
-        )
-        self.post_fc_bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(post_fc_dim) for i in range(num_post_fc)])
+        if self.post_fc_dim_factor is not None:
+            dim = self.conv_out_dim
+            dims = []
+            for i in range(self.num_post_fc):
+                dim = round(dim * self.post_fc_dim_factor)
+                dims.append(dim)
+            
+            self.post_fc = torch.nn.ModuleList()
+            self.post_fc.append(torch.nn.Linear(self.conv_out_dim, dims[0]))
+            for i in range(len(dims) - 1):
+                self.post_fc.append(torch.nn.Linear(dims[i], dims[i + 1]))
 
-        self.out_dim = post_fc_dim if num_post_fc > 0 else conv_out_dim
+            self.post_fc_bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(dims[i]) for i in range(len(dims))])
+            self.out_dim = dims[-1] if num_post_fc > 0 else conv_out_dim
+            # print(self.post_fc, self.post_fc_bns, self.conv_out_dim, dims)
+        else:
+            self.post_fc = torch.nn.ModuleList(
+                ([torch.nn.Linear(conv_out_dim, post_fc_dim)] if num_post_fc > 0 else [])
+                + [torch.nn.Linear(post_fc_dim, post_fc_dim) for i in range(num_post_fc - 1)]
+            )
+            self.post_fc_bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(post_fc_dim) for i in range(num_post_fc)])
+            self.out_dim = post_fc_dim if num_post_fc > 0 else conv_out_dim
+            
         self.out_lin = torch.nn.Linear(self.out_dim, 1)
 
     def forward(self, batch_data, node_embedding=False):
