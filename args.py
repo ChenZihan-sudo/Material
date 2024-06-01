@@ -16,7 +16,7 @@ args["dataset_dir"] = DATASET_DIR
 args["dataset_raw_dir"] = DATASET_RAW_DIR
 args["dataset_processed_dir"] = DATASET_PROCESSED_DIR
 
-args["max_cutoff_distance"] = 4.5
+args["max_cutoff_distance"] = 3.5
 
 # * For dataset of Material Project
 args["chunk_size"] = 1000
