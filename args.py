@@ -7,7 +7,7 @@ WORK_DIR = "."
 DATASET_ORIGIN_DIR = osp.join("{}".format(WORK_DIR), "dataset")
 DATASET_RAW_DIR = osp.join("{}".format(DATASET_ORIGIN_DIR), "raw")
 
-DATASET_DIR = osp.join("{}".format(WORK_DIR), "dataset.max_cutoff==5.0")
+DATASET_DIR = osp.join("{}".format(WORK_DIR), "dataset.max_cutoff==3.5")
 DATASET_PROCESSED_DIR = osp.join("{}".format(DATASET_DIR), "processed")
 
 args = {}
@@ -16,7 +16,11 @@ args["dataset_dir"] = DATASET_DIR
 args["dataset_raw_dir"] = DATASET_RAW_DIR
 args["dataset_processed_dir"] = DATASET_PROCESSED_DIR
 
-args["max_cutoff_distance"] = 5.0
+args["max_cutoff_distance"] = 3.5
+
+
+# * result path
+args["result_path"] = "./results"
 
 # * For dataset of Material Project
 args["chunk_size"] = 1000
@@ -25,8 +29,8 @@ args["keep_data_from"] = "./dataset/raw/INDICES"
 args["onehot_gen"] = False
 args["onehot_range"] = [1, 101]
 
-# * result path
-args["result_path"] = "./results"
+args["data_optimize"] = False
+args["data_opt_model_path"] = osp.join(args["result_path"], "CEAL/1717234278983621")
 
 # * device
 args["device"] = "cuda"
@@ -47,12 +51,12 @@ hypo_args["data_dir"] = osp.join("{}".format(DATASET_PROCESSED_DIR), "hypo_data"
 args["trainset_ratio"] = 0.7
 args["valset_ratio"] = 0.15
 args["testset_ratio"] = 0.15
-args["split_dataset_seed"] = 234
+args["split_dataset_seed"] = 777
 
 # * data loader
-args["batch_size"] = 1024
+args["batch_size"] = 1000
 args["data_loader_shuffle"] = True
-args["data_loader_seed"] = 123
+args["data_loader_seed"] = 888
 args["num_workers"] = 8
 
 # * GCN model
@@ -86,9 +90,9 @@ ceal_args["pre_layers"] = 1
 ceal_args["post_layers"] = 1
 ceal_args["divide_input"] = False
 ceal_args["aggMLP"] = True
-ceal_args["aggMLP_factor"] = 1.0
+ceal_args["aggMLP_factor"] = 0.7
 # model parameters
-ceal_args["num_pre_fc"] = 2
+ceal_args["num_pre_fc"] = 1
 ceal_args["pre_fc_dim"] = 100
 ceal_args["pre_fc_dim_factor"] = None
 
@@ -96,15 +100,15 @@ ceal_args["conv_out_dim"] = 200
 ceal_args["num_layers"] = 1
 
 ceal_args["num_post_fc"] = 2
-ceal_args["post_fc_dim"] = 100
-ceal_args["post_fc_dim_factor"] = None
+ceal_args["post_fc_dim"] = 150
+ceal_args["post_fc_dim_factor"] = 0.4
 
-ceal_args["dropout_rate"] = 0.5
+ceal_args["dropout_rate"] = 0.3
 # train
 ceal_args["epochs"] = 10000
 ceal_args["learning_rate"] = 0.01
 # for ReduceLROnPlateau scheduler
 ceal_args["sche_mode"] = "min"
-ceal_args["sche_factor"] = 0.80
-ceal_args["sche_patience"] = 20
+ceal_args["sche_factor"] = 0.85
+ceal_args["sche_patience"] = 25
 ceal_args["sche_min_lr"] = 1e-8

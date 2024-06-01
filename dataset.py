@@ -14,6 +14,8 @@ from torch_geometric.utils import dense_to_sparse, add_self_loops
 from torch.utils.data import random_split, Subset
 from typing import Sequence
 from itertools import permutations
+
+from model import load_model
 import copy
 
 from args import *
@@ -88,7 +90,9 @@ def raw_data_preprocess(dest_dir, raw_datasets):
 
 
 # Process one compound data
-def read_one_compound_info(compound_data) -> Data:
+def read_one_compound_info(
+    compound_data, max_cutoff_distance=args["max_cutoff_distance"], optimize=False, onehot_dict=None, model=None, device=get_device()
+) -> Data:
     data = Data()
 
     idx, mid, y = compound_data[0], compound_data[1], compound_data[2]
@@ -98,11 +102,16 @@ def read_one_compound_info(compound_data) -> Data:
     filename = osp.join("{}".format(DATASET_RAW_DIR), "CONFIG_" + idx + ".poscar")
     compound = ase_read(filename, format="vasp")
 
+    threshold = 1000
+    # optimze big volume compounds if need
+    if optimize is True and compound.get_volume() > threshold:
+        max_cutoff_distance += 2.0
+
     # get distance matrix
     distance_matrix = compound.get_all_distances(mic=True)
 
     # get mask by max cutoff distance
-    cutoff_mask = distance_matrix > args["max_cutoff_distance"]
+    cutoff_mask = distance_matrix > max_cutoff_distance
     # suppress invalid values using max cutoff distance
     distance_matrix = np.ma.array(distance_matrix, mask=cutoff_mask)
     # let '--' in the masked array to 0
@@ -124,11 +133,37 @@ def read_one_compound_info(compound_data) -> Data:
 
     data.edge_attr = edge_weight_to_edge_attr(data.edge_weight)
 
+    # if optimize is True:
+    #     with torch.no_grad():
+    #         min, max = get_data_scale(args)
+    #         # print("before", data.y)
+    #         # data.y = tensor_min_max_scalar_1d(data.y, min, max)
+    #         # print("after", data.y)
+    #         data.x = torch.tensor(np.vstack([onehot_dict[str(i)] for i in data.atomic_numbers]).astype(np.float32))
+    #         data = data.to(device)
+    #         out = model(data, node_embedding=False)
+
+    #         # reverse data scale
+    #         res_out = reverse_min_max_scalar_1d(out, min, max)
+    #         # res_y = reverse_min_max_scalar_1d(data.y, min, max)
+    #         res_y = data.y
+    #         # print(res_out, res_y)
+
+    #         # get high prediction error compounds
+    #         threshold = 0.5
+    #         error = (res_out.squeeze() - res_y).abs()
+    #         max_cutoff_distance += 3.0
+    #         # print("optimized", error, error > threshold)
+    #         if error > threshold:
+    #             print("changed", error, max_cutoff_distance)
+    #             data = read_one_compound_info(compound_data, max_cutoff_distance)
+    #         else:
+    #             data = data.to(torch.device("cpu"))
     return data
 
 
 # Process raw data and store them as data.pt in {DATASET_PROCESSED_DIR}
-def raw_data_process(onehot_gen=True, onehot_range: list = None) -> list:
+def raw_data_process(onehot_gen=True, onehot_range: list = None, optimize=args["data_optimize"], model_path=args["data_opt_model_path"]) -> list:
     """
     Args:
     - onehot_gen: set `True` will generate atomic number onehot from all compoundd. Otherwise, use `onehot_range`.
@@ -146,12 +181,21 @@ def raw_data_process(onehot_gen=True, onehot_range: list = None) -> list:
     pbar = tqdm(total=len(indices))
     pbar.set_description("dataset processing")
 
+    # optimze from compounds if need
+    # if optimize is True:
+    #     model, _ = load_model(model_path)
+    #     model.eval()
+    #     onehot_dict_optimize = read_onehot_dict(DATASET_RAW_DIR, "onehot_dict.json")
+
     # Process single graph
     data_list = []
     atomic_number_set = set()
+
     for i, d in enumerate(indices):
         # d: one item in indices (e.g. i=0, d=['1', 'mp-861724', '-0.41328523750000556'])
-        data = read_one_compound_info(d)
+        data = read_one_compound_info(d, optimize=optimize)
+        # data = read_one_compound_info(d, optimize=optimize, model=model, onehot_dict=onehot_dict_optimize)
+
         if onehot_gen is True:
             for a in data.atomic_numbers:
                 atomic_number_set.add(a)

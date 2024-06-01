@@ -1,0 +1,92 @@
+{
+    "dataset_dir": "./dataset.max_cutoff==3.5.optimized",
+    "dataset_raw_dir": "./dataset/raw",
+    "dataset_processed_dir": "./dataset.max_cutoff==3.5.optimized/processed",
+    "max_cutoff_distance": 3.5,
+    "result_path": "./results",
+    "chunk_size": 1000,
+    "num_chunks": null,
+    "keep_data_from": "./dataset/raw/INDICES",
+    "onehot_gen": false,
+    "onehot_range": [
+        1,
+        101
+    ],
+    "data_optimize": true,
+    "data_opt_model_path": "./results/CEAL/1717234278983621",
+    "device": "cuda",
+    "hypothesis_dataset": {
+        "scales": [
+            0.96,
+            0.98,
+            1.0,
+            1.02,
+            1.04
+        ],
+        "atomic_numbers": [
+            58,
+            27,
+            29
+        ],
+        "data_filename": "hypo_data",
+        "split_num": 10,
+        "data_dir": "./dataset.max_cutoff==3.5.optimized/processed/hypo_data"
+    },
+    "trainset_ratio": 0.7,
+    "valset_ratio": 0.15,
+    "testset_ratio": 0.15,
+    "split_dataset_seed": 234,
+    "batch_size": 1024,
+    "data_loader_shuffle": true,
+    "data_loader_seed": 123,
+    "num_workers": 8,
+    "GCN": {
+        "conv_out_dim": 100,
+        "num_layers": 2,
+        "num_pre_fc": 2,
+        "pre_fc_dim": 200,
+        "num_post_fc": 2,
+        "post_fc_dim": 200,
+        "dropout_rate": 0.6,
+        "epochs": 1000,
+        "learning_rate": 0.01,
+        "sche_mode": "min",
+        "sche_factor": 0.8,
+        "sche_patience": 20,
+        "sche_min_lr": 1e-08
+    },
+    "CEAL": {
+        "aggregators": [
+            "sum",
+            "mean",
+            "min",
+            "max",
+            "std"
+        ],
+        "scalers": [
+            "identity"
+        ],
+        "edge_dim": 1,
+        "towers": 1,
+        "pre_layers": 1,
+        "post_layers": 1,
+        "divide_input": false,
+        "aggMLP": true,
+        "aggMLP_factor": 1.0,
+        "num_pre_fc": 1,
+        "pre_fc_dim": 100,
+        "pre_fc_dim_factor": null,
+        "conv_out_dim": 200,
+        "num_layers": 1,
+        "num_post_fc": 2,
+        "post_fc_dim": 150,
+        "post_fc_dim_factor": 0.4,
+        "dropout_rate": 0.5,
+        "epochs": 10000,
+        "learning_rate": 0.01,
+        "sche_mode": "min",
+        "sche_factor": 0.85,
+        "sche_patience": 25,
+        "sche_min_lr": 1e-08
+    }
+}
