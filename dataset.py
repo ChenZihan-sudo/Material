@@ -1,3 +1,4 @@
+import io
 import random
 import json
 import csv
@@ -456,12 +457,15 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
         save_point = save_point[:-1]
         save_point[-1] = len(indices) - 1
     save_track = 0
+    # save save_point
+    torch.save(save_point, osp.join(data_dir, "save_point.pt"))
     print("save points: ", save_point)
 
     # Process single graph data
     hypo_data_track = 1
     hypo_indices = []
     data_list = []
+    poscar_data_list = []
     for i, d in enumerate(indices):
 
         # i = 355
@@ -483,6 +487,12 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
         for j, hypo_data in enumerate(hypo_data_list):
             hypo_data.id = j + hypo_data_track
             data_list.append(hypo_data)
+
+            # transform ase to poscar format string
+            output = io.StringIO()
+            hypo_compounds[j].write(output, format="vasp")
+            poscar = (hypo_data.id, output)
+            poscar_data_list.append(poscar)
 
         pbar.update(single_processed)
         hypo_data_track += single_processed
@@ -506,8 +516,11 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
             file_path = osp.join(data_dir, hypo_args["data_filename"] + "_" + str(save_track) + ".pt")
             print("Data block ", save_track, " saved on ", file_path)
             torch.save(data_list, file_path)
+            ase_file_path = osp.join(data_dir, f"ase_{str(save_track)}.pt")
+            torch.save(poscar_data_list, ase_file_path)
             print("Saved data length:", len(data_list))
             data_list = []
+            poscar_data_list = []
 
         # if i == 1:
         # break
@@ -552,8 +565,10 @@ class HypoDataset(Dataset):
     def len(self):
         return len(self.processed_file_names)
 
-    def get(self, idx):
+    def get(self, idx, get_ase=False):
         data = torch.load(osp.join(self.processed_dir, f"{self.hypo_args['data_filename']}_{idx+1}.pt"))
+        if get_ase is True:
+            data = torch.load(osp.join(self.processed_dir, f"ase_{idx+1}.pt"))
         return data
 
 

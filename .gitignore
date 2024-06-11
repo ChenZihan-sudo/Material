@@ -18,3 +18,5 @@
 __pycache__
 .DS_Store
 *.code-workspace
+
+/sample_data
