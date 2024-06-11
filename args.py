@@ -48,13 +48,14 @@ hypo_args["split_num"] = 10
 hypo_args["data_dir"] = osp.join("{}".format(DATASET_PROCESSED_DIR), "hypo_data")
 
 # * random split dataset
-args["trainset_ratio"] = 0.7
-args["valset_ratio"] = 0.15
-args["testset_ratio"] = 0.15
-args["split_dataset_seed"] = 777
+args["trainset_ratio"] = 0.45
+args["valset_ratio"] = 0.275
+args["testset_ratio"] = 0.275
+args["split_dataset_seed"] = 765
 
 # * data loader
-args["batch_size"] = 1000
+# 1000 700 500
+args["batch_size"] = 800
 args["data_loader_shuffle"] = True
 args["data_loader_seed"] = 888
 args["num_workers"] = 8
@@ -83,14 +84,15 @@ args["CEAL"] = {}
 ceal_args = args["CEAL"]
 # ceal conv parameters
 ceal_args["aggregators"] = ["sum", "mean", "min", "max", "std"]
-ceal_args["scalers"] = ["identity"]
+ceal_args["scalers"] = ["identity", "amplification", "attenuation"]
 ceal_args["edge_dim"] = 1
 ceal_args["towers"] = 1
 ceal_args["pre_layers"] = 1
 ceal_args["post_layers"] = 1
 ceal_args["divide_input"] = False
-ceal_args["aggMLP"] = True
-ceal_args["aggMLP_factor"] = 0.7
+ceal_args["aggMLP"] = False
+ceal_args["aggMLP_factor"] = 1.5
+
 # model parameters
 ceal_args["num_pre_fc"] = 1
 ceal_args["pre_fc_dim"] = 100
