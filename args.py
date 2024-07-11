@@ -48,10 +48,10 @@ hypo_args["split_num"] = 10
 hypo_args["data_dir"] = osp.join("{}".format(DATASET_PROCESSED_DIR), "hypo_data")
 
 # * random split dataset
-args["trainset_ratio"] = 0.45
-args["valset_ratio"] = 0.275
-args["testset_ratio"] = 0.275
-args["split_dataset_seed"] = 765
+args["trainset_ratio"] = 0.7
+args["valset_ratio"] = 0.15
+args["testset_ratio"] = 0.15
+args["split_dataset_seed"] = 777
 
 # * data loader
 # 1000 700 500
@@ -59,6 +59,7 @@ args["batch_size"] = 800
 args["data_loader_shuffle"] = True
 args["data_loader_seed"] = 888
 args["num_workers"] = 8
+
 
 # * GCN model
 args["GCN"] = {}
@@ -79,6 +80,7 @@ gcn_args["sche_factor"] = 0.8
 gcn_args["sche_patience"] = 20
 gcn_args["sche_min_lr"] = 1e-8
 
+
 # * CEAL model
 args["CEAL"] = {}
 ceal_args = args["CEAL"]
@@ -91,7 +93,7 @@ ceal_args["pre_layers"] = 1
 ceal_args["post_layers"] = 1
 ceal_args["divide_input"] = False
 ceal_args["aggMLP"] = False
-ceal_args["aggMLP_factor"] = 1.5
+ceal_args["aggMLP_factor"] = 0.7
 
 # model parameters
 ceal_args["num_pre_fc"] = 1
@@ -106,11 +108,47 @@ ceal_args["post_fc_dim"] = 150
 ceal_args["post_fc_dim_factor"] = 0.4
 
 ceal_args["dropout_rate"] = 0.3
-# train
+
+# train parameters
 ceal_args["epochs"] = 10000
 ceal_args["learning_rate"] = 0.01
-# for ReduceLROnPlateau scheduler
+# ReduceLROnPlateau scheduler
 ceal_args["sche_mode"] = "min"
 ceal_args["sche_factor"] = 0.85
 ceal_args["sche_patience"] = 25
 ceal_args["sche_min_lr"] = 1e-8
+
+
+# * PNA model
+args["PNA"] = {}
+pna_args = args["PNA"]
+
+# PNAConv parameters
+pna_args["aggregators"] = ["sum", "mean", "min", "max", "std"]
+pna_args["scalers"] = ["identity", "amplification", "attenuation"]
+pna_args["edge_dim"] = 1
+pna_args["towers"] = 1
+pna_args["divide_input"] = False
+pna_args["pre_layers"] = 1
+pna_args["post_layers"] = 1
+
+# model parameters
+pna_args["num_pre_fc"] = 1
+pna_args["pre_fc_dim"] = 100
+
+pna_args["num_layers"] = 1
+pna_args["conv_out_dim"] = 200
+
+pna_args["num_post_fc"] = 2
+pna_args["post_fc_dim"] = 150
+
+pna_args["drop_rate"] = 0.3
+
+# train parameters
+pna_args["epochs"] = 10000
+pna_args["learning_rate"] = 0.01
+# ReduceLROnPlateau scheduler
+pna_args["sche_mode"] = "min"
+pna_args["sche_factor"] = 0.85
+pna_args["sche_patience"] = 25
+pna_args["sche_min_lr"] = 1e-8
