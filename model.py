@@ -164,7 +164,7 @@ class CEALNetwork(torch.nn.Module):
         # pre full connect
         for i, lin in enumerate(self.pre_fc):
             out = lin(x) if i == 0 else lin(out)
-            # out = self.pre_fc_bns[i](out)
+            out = self.pre_fc_bns[i](out)
             out = F.relu(out)
 
         # ceal conv layers
@@ -184,7 +184,7 @@ class CEALNetwork(torch.nn.Module):
         # post full connect
         for i, lin in enumerate(self.post_fc):
             out = lin(out)
-            # out = self.post_fc_bns[i](out)
+            out = self.post_fc_bns[i](out)
             out = F.relu(out)
 
         out = self.out_lin(out)
