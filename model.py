@@ -226,6 +226,7 @@ class CEALNetwork(torch.nn.Module):
                 post_layers=ceal_args["post_layers"],
                 divide_input=ceal_args["divide_input"],
                 aggMLP=ceal_args["aggMLP"],
+                aggMLP_factor=ceal_args["aggMLP_factor"],
             )
             for i in range(num_layers - 1)
         ]
@@ -286,13 +287,13 @@ class CEALNetwork(torch.nn.Module):
         for i, lin in enumerate(self.pre_fc):
             out = lin(x) if i == 0 else lin(out)
             out = self.pre_fc_bns[i](out)
-            out = F.leaky_relu(out)
+            out = F.elu(out)
 
         # ceal conv layers
         for conv, bn in zip(self.convs, self.bns):
             out = conv(out, edge_index, batch, edge_attr)
             out = bn(out)
-            out = F.leaky_relu(out)
+            out = F.elu(out)
             out = F.dropout(out, p=self.drop_rate, training=self.training)
 
         # get node embedding instead of predicting the result
@@ -306,7 +307,7 @@ class CEALNetwork(torch.nn.Module):
         for i, lin in enumerate(self.post_fc):
             out = lin(out)
             out = self.post_fc_bns[i](out)
-            out = F.leaky_relu(out)
+            out = F.elu(out)
 
         out = self.out_lin(out)
 

@@ -1,0 +1,2 @@
+train_ceal.ipynb是使用leaky_relu
+train_ceal_2.ipynb是使用ELU

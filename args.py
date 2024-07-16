@@ -48,14 +48,14 @@ hypo_args["split_num"] = 10
 hypo_args["data_dir"] = osp.join("{}".format(DATASET_PROCESSED_DIR), "hypo_data")
 
 # * random split dataset
-args["trainset_ratio"] = 0.7
+args["trainset_ratio"] = 0.70
 args["valset_ratio"] = 0.15
 args["testset_ratio"] = 0.15
 args["split_dataset_seed"] = 777
 
 # * data loader
 # 1000 700 500
-args["batch_size"] = 900
+args["batch_size"] = 1000
 args["data_loader_shuffle"] = True
 args["data_loader_seed"] = 3407
 args["num_workers"] = 8
@@ -93,7 +93,7 @@ ceal_args["pre_layers"] = 1
 ceal_args["post_layers"] = 1
 ceal_args["divide_input"] = False
 ceal_args["aggMLP"] = True
-ceal_args["aggMLP_factor"] = 0.7
+ceal_args["aggMLP_factor"] = 0.5
 
 # model parameters
 ceal_args["pre_fc_dim"] = [50, 100]  # last one is conv_in_dim
@@ -104,7 +104,7 @@ ceal_args["pre_fc_dim_factor"] = None
 ceal_args["num_layers"] = 1
 ceal_args["conv_out_dim"] = 150
 
-ceal_args["post_fc_dim"] = [50, 100, 50, 25]
+ceal_args["post_fc_dim"] = [75, 150, 75, 35]
 # deprecated
 ceal_args["num_post_fc"] = None
 ceal_args["post_fc_dim_factor"] = None
