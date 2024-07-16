@@ -23,6 +23,100 @@ gcn_args = args["GCN"]
 pna_args = args["PNA"]
 
 
+class OriginCEALNetwork(torch.nn.Module):
+
+    def __init__(
+        self,
+        deg,
+        in_channels,
+        conv_out_dim=ceal_args["conv_out_dim"],
+        aggregators=ceal_args["aggregators"],
+        scalers=ceal_args["scalers"],
+        numLayers=1,
+        edge_dim=ceal_args["edge_dim"],
+        towers=ceal_args["towers"],
+        pre_layers=ceal_args["pre_layers"],
+        post_layers=ceal_args["post_layers"],
+        divide_input=ceal_args["divide_input"],
+        aggMLP=ceal_args["aggMLP"],
+        **kwargs,
+    ):
+
+        super().__init__()
+
+        self.in_channels = in_channels
+        self.out_channels = conv_out_dim
+        self.aggregators = aggregators
+        self.scalers = scalers
+        self.deg = deg
+        self.numLayers = numLayers
+        self.edge_dim = edge_dim
+        self.towers = towers
+        self.pre_layers = pre_layers
+        self.post_layers = post_layers
+        self.divide_input = divide_input
+        self.aggMLP = aggMLP
+
+        # The first CEAL layer
+        self.ceal_1 = CEALConv(
+            in_channels=conv_out_dim,
+            out_channels=conv_out_dim,
+            aggregators=aggregators,
+            scalers=scalers,
+            deg=deg,
+            edge_dim=edge_dim,
+            towers=1,
+            pre_layers=1,
+            post_layers=1,
+            divide_input=False,
+            aggMLP=aggMLP,
+        )
+        self.batch_norm_1 = BatchNorm(self.out_channels)
+
+        # This container holds 2nd and more ceal layers
+        self.cealConvs = ModuleList()
+        self.batch_norms = ModuleList()
+        for _ in range(1, self.numLayers):
+            cealconv = CEALConv(
+                in_channels=conv_out_dim,
+                out_channels=conv_out_dim,
+                aggregators=aggregators,
+                scalers=scalers,
+                deg=deg,
+                edge_dim=edge_dim,
+                towers=1,
+                pre_layers=1,
+                post_layers=1,
+                divide_input=False,
+                aggMLP=aggMLP,
+            )
+            batch_norm = BatchNorm(self.out_channels)
+            self.cealConvs.append(cealconv)
+            self.batch_norms.append(batch_norm)
+
+        self.pre_mlp = Sequential(Linear(in_channels, conv_out_dim // 2), ReLU(), Linear(conv_out_dim // 2, conv_out_dim))
+        self.post_mlp = Sequential(Linear(self.out_channels, 100), ReLU(), Linear(100, 1))
+
+    def forward(self, batch_data):
+        # Note: batch_data is provided by Dataloader
+        x, edge_index, edge_attr = batch_data.x, batch_data.edge_index, batch_data.edge_attr
+
+        x = self.pre_mlp(x)
+        x = self.ceal_1(x, edge_index, batch_data.batch, edge_attr)
+        x = self.batch_norm_1(x)
+        x = F.relu(x)
+        x = F.dropout(x, p=0.3, training=self.training)
+
+        for cealconv, batch_norm in zip(self.cealConvs, self.batch_norms):
+            x = batch_norm(cealconv(x, edge_index, batch_data.batch, edge_attr))
+            x = F.relu(x)
+            x = F.dropout(x, p=0.3, training=self.training)
+
+        x = global_add_pool(x, batch_data.batch)
+        out = self.post_mlp(x)
+        return out
+
+
 class CEALNetwork(torch.nn.Module):
     def __init__(
         self,
@@ -64,6 +158,7 @@ class CEALNetwork(torch.nn.Module):
         self.post_fc_dim_factor = post_fc_dim_factor
 
         # pre fc
+        # pre_fc_dim_factor is deprecated
         if self.pre_fc_dim_factor is not None:
             dim = self.in_dim
             dims = []
@@ -77,15 +172,28 @@ class CEALNetwork(torch.nn.Module):
                 self.pre_fc.append(torch.nn.Linear(dims[i], dims[i + 1]))
 
             self.pre_fc_bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(dims[i]) for i in range(len(dims))])
-            self.conv_in_dim = dims[-1] if num_pre_fc > 0 else in_dim
+            self.conv_in_dim = dims[-1] if self.num_pre_fc > 0 else in_dim
             # print(self.pre_fc, self.pre_fc_bns, self.conv_in_dim, dims)
         else:
-            self.pre_fc = torch.nn.ModuleList(
-                ([torch.nn.Linear(in_dim, pre_fc_dim)] if num_pre_fc > 0 else [])
-                + [torch.nn.Linear(pre_fc_dim, pre_fc_dim) for i in range(num_pre_fc - 1)]
-            )
-            self.pre_fc_bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(pre_fc_dim) for i in range(num_pre_fc)])
-            self.conv_in_dim = pre_fc_dim if num_pre_fc > 0 else in_dim
+            if type(pre_fc_dim) is int:
+                self.conv_in_dim = pre_fc_dim if self.num_pre_fc > 0 else in_dim
+                self.pre_fc = torch.nn.ModuleList(
+                    ([torch.nn.Linear(in_dim, pre_fc_dim)] if self.num_pre_fc > 0 else [])
+                    + [torch.nn.Linear(pre_fc_dim, pre_fc_dim) for i in range(self.num_pre_fc - 1)]
+                )
+                self.pre_fc_bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(pre_fc_dim) for i in range(self.num_pre_fc)])
+            elif type(pre_fc_dim) is list:
+                self.num_pre_fc = len(self.pre_fc_dim)
+                self.conv_in_dim = pre_fc_dim[-1] if self.num_pre_fc > 0 else in_dim
+                self.pre_fc = torch.nn.ModuleList()
+                self.pre_fc_bns = torch.nn.ModuleList()
+                last_dim = in_dim
+                for i in range(self.num_pre_fc):
+                    self.pre_fc.append(torch.nn.Linear(last_dim, self.pre_fc_dim[i]))
+                    self.pre_fc_bns.append(torch.nn.BatchNorm1d(self.pre_fc_dim[i]))
+                    last_dim = self.pre_fc_dim[i]
+                # print(self.pre_fc)
+                # print(self.pre_fc_bns)
 
         # ceal convs
         # (in_dim)conv(out_dim)->bn->relu->dropout->(out_dim)conv(out_dim)->bn->relu->dropout...
@@ -143,15 +251,28 @@ class CEALNetwork(torch.nn.Module):
                 self.post_fc.append(torch.nn.Linear(dims[i], dims[i + 1]))
 
             self.post_fc_bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(dims[i]) for i in range(len(dims))])
-            self.out_dim = dims[-1] if num_post_fc > 0 else conv_out_dim
+            self.out_dim = dims[-1] if self.num_post_fc > 0 else conv_out_dim
             # print(self.post_fc, self.post_fc_bns, self.conv_out_dim, dims)
         else:
-            self.post_fc = torch.nn.ModuleList(
-                ([torch.nn.Linear(conv_out_dim, post_fc_dim)] if num_post_fc > 0 else [])
-                + [torch.nn.Linear(post_fc_dim, post_fc_dim) for i in range(num_post_fc - 1)]
-            )
-            self.post_fc_bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(post_fc_dim) for i in range(num_post_fc)])
-            self.out_dim = post_fc_dim if num_post_fc > 0 else conv_out_dim
+            if type(post_fc_dim) is int:
+                self.post_fc = torch.nn.ModuleList(
+                    ([torch.nn.Linear(conv_out_dim, post_fc_dim)] if self.num_post_fc > 0 else [])
+                    + [torch.nn.Linear(post_fc_dim, post_fc_dim) for i in range(self.num_post_fc - 1)]
+                )
+                self.post_fc_bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(post_fc_dim) for i in range(self.num_post_fc)])
+                self.out_dim = post_fc_dim if self.num_post_fc > 0 else conv_out_dim
+            elif type(post_fc_dim) is list:
+                self.num_post_fc = len(self.post_fc_dim)
+                self.out_dim = post_fc_dim[-1] if self.num_post_fc > 0 else conv_out_dim
+                self.post_fc = torch.nn.ModuleList()
+                self.post_fc_bns = torch.nn.ModuleList()
+                last_dim = conv_out_dim
+                for i in range(self.num_post_fc):
+                    self.post_fc.append(torch.nn.Linear(last_dim, self.post_fc_dim[i]))
+                    self.post_fc_bns.append(torch.nn.BatchNorm1d(self.post_fc_dim[i]))
+                    last_dim = self.post_fc_dim[i]
+                # print(self.post_fc)
+                # print(self.post_fc_bns)
 
         self.out_lin = torch.nn.Linear(self.out_dim, 1)
 
@@ -164,14 +285,14 @@ class CEALNetwork(torch.nn.Module):
         # pre full connect
         for i, lin in enumerate(self.pre_fc):
             out = lin(x) if i == 0 else lin(out)
-            # out = self.pre_fc_bns[i](out)
-            out = F.relu(out)
+            out = self.pre_fc_bns[i](out)
+            out = F.leaky_relu(out)
 
         # ceal conv layers
         for conv, bn in zip(self.convs, self.bns):
             out = conv(out, edge_index, batch, edge_attr)
             out = bn(out)
-            out = F.relu(out)
+            out = F.leaky_relu(out)
             out = F.dropout(out, p=self.drop_rate, training=self.training)
 
         # get node embedding instead of predicting the result
@@ -184,8 +305,8 @@ class CEALNetwork(torch.nn.Module):
         # post full connect
         for i, lin in enumerate(self.post_fc):
             out = lin(out)
-            # out = self.post_fc_bns[i](out)
-            out = F.relu(out)
+            out = self.post_fc_bns[i](out)
+            out = F.leaky_relu(out)
 
         out = self.out_lin(out)
 

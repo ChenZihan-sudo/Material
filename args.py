@@ -55,9 +55,9 @@ args["split_dataset_seed"] = 777
 
 # * data loader
 # 1000 700 500
-args["batch_size"] = 850
+args["batch_size"] = 900
 args["data_loader_shuffle"] = True
-args["data_loader_seed"] = 888
+args["data_loader_seed"] = 3407
 args["num_workers"] = 8
 
 
@@ -96,18 +96,20 @@ ceal_args["aggMLP"] = True
 ceal_args["aggMLP_factor"] = 0.7
 
 # model parameters
-ceal_args["num_pre_fc"] = 1
-ceal_args["pre_fc_dim"] = 100
+ceal_args["pre_fc_dim"] = [50, 100]  # last one is conv_in_dim
+# deprecated
+ceal_args["num_pre_fc"] = None
 ceal_args["pre_fc_dim_factor"] = None
 
-ceal_args["conv_out_dim"] = 50
 ceal_args["num_layers"] = 1
+ceal_args["conv_out_dim"] = 150
 
-ceal_args["num_post_fc"] = 2
-ceal_args["post_fc_dim"] = 100
+ceal_args["post_fc_dim"] = [50, 100, 50, 25]
+# deprecated
+ceal_args["num_post_fc"] = None
 ceal_args["post_fc_dim_factor"] = None
 
-ceal_args["dropout_rate"] = 0.3
+ceal_args["dropout_rate"] = 0.4
 
 # train parameters
 ceal_args["epochs"] = 10000
@@ -115,7 +117,7 @@ ceal_args["learning_rate"] = 0.01
 # ReduceLROnPlateau scheduler
 ceal_args["sche_mode"] = "min"
 ceal_args["sche_factor"] = 0.85
-ceal_args["sche_patience"] = 25
+ceal_args["sche_patience"] = 30
 ceal_args["sche_min_lr"] = 1e-8
 
 
