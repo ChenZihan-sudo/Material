@@ -142,6 +142,9 @@ class CEALConv(MessagePassing):
     """
 
     def forward(self, x, edge_index, batch, edge_attr=None):
+
+        # edge_index, _ = add_self_loops(edge_index, num_nodes=x.size(0))
+
         if self.divide_input:
             x = x.view(-1, self.towers, self.F_in)
         else:

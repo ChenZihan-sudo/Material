@@ -20,3 +20,5 @@ __pycache__
 *.code-workspace
 
 /sample_data
+
+/Yuner_Codes/*

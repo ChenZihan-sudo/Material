@@ -55,7 +55,7 @@ args["split_dataset_seed"] = 777
 
 # * data loader
 # 1000 700 500
-args["batch_size"] = 800
+args["batch_size"] = 850
 args["data_loader_shuffle"] = True
 args["data_loader_seed"] = 888
 args["num_workers"] = 8
@@ -86,13 +86,13 @@ args["CEAL"] = {}
 ceal_args = args["CEAL"]
 # ceal conv parameters
 ceal_args["aggregators"] = ["sum", "mean", "min", "max", "std"]
-ceal_args["scalers"] = ["identity", "amplification", "attenuation"]
+ceal_args["scalers"] = ["identity"]
 ceal_args["edge_dim"] = 1
 ceal_args["towers"] = 1
 ceal_args["pre_layers"] = 1
 ceal_args["post_layers"] = 1
 ceal_args["divide_input"] = False
-ceal_args["aggMLP"] = False
+ceal_args["aggMLP"] = True
 ceal_args["aggMLP_factor"] = 0.7
 
 # model parameters
@@ -100,12 +100,12 @@ ceal_args["num_pre_fc"] = 1
 ceal_args["pre_fc_dim"] = 100
 ceal_args["pre_fc_dim_factor"] = None
 
-ceal_args["conv_out_dim"] = 200
+ceal_args["conv_out_dim"] = 50
 ceal_args["num_layers"] = 1
 
 ceal_args["num_post_fc"] = 2
-ceal_args["post_fc_dim"] = 150
-ceal_args["post_fc_dim_factor"] = 0.4
+ceal_args["post_fc_dim"] = 100
+ceal_args["post_fc_dim_factor"] = None
 
 ceal_args["dropout_rate"] = 0.3
 

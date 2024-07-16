@@ -70,6 +70,7 @@ class CEALNetwork(torch.nn.Module):
             for i in range(self.num_pre_fc):
                 dim = round(dim * self.pre_fc_dim_factor)
                 dims.append(dim)
+            # print(dims)
             self.pre_fc = torch.nn.ModuleList()
             self.pre_fc.append(torch.nn.Linear(self.in_dim, dims[0]))
             for i in range(len(dims) - 1):
@@ -125,7 +126,8 @@ class CEALNetwork(torch.nn.Module):
         self.bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(conv_out_dim) for i in range(num_layers)])
         self.drop_rate = drop_rate
 
-        self.pool = global_mean_pool
+        # self.pool = global_mean_pool
+        self.pool = global_add_pool
 
         # post fc
         if self.post_fc_dim_factor is not None:
@@ -162,7 +164,7 @@ class CEALNetwork(torch.nn.Module):
         # pre full connect
         for i, lin in enumerate(self.pre_fc):
             out = lin(x) if i == 0 else lin(out)
-            out = self.pre_fc_bns[i](out)
+            # out = self.pre_fc_bns[i](out)
             out = F.relu(out)
 
         # ceal conv layers
@@ -182,7 +184,7 @@ class CEALNetwork(torch.nn.Module):
         # post full connect
         for i, lin in enumerate(self.post_fc):
             out = lin(out)
-            out = self.post_fc_bns[i](out)
+            # out = self.post_fc_bns[i](out)
             out = F.relu(out)
 
         out = self.out_lin(out)
@@ -241,6 +243,7 @@ class GCNNetwork(torch.nn.Module):
         self.out_lin = torch.nn.Linear(self.out_dim, 1)
 
     def forward(self, batch_data, node_embedding=True):
+        # print("batch_data", batch_data)
         x, edge_index, edge_weight = batch_data.x, batch_data.edge_index, batch_data.edge_weight
         batch = batch_data.batch
 
