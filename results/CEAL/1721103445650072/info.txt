@@ -1,0 +1,9 @@
+使用了global_add_pool
+使用relu做激活函数
+使用原始ceal.py aggMLP_factor为0.7
+与1721097051292066进行对比，参数无变动
+train_ceal.ipynb
+
+ceal_args["conv_out_dim"] = 50
+ceal_args["num_layers"] = 2
+使用两层ceal
