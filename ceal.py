@@ -1,7 +1,7 @@
 # This is the implementation of CEAL layer
 
 import torch
-from torch.nn import ReLU,ELU, ModuleList, Sequential
+from torch.nn import ReLU, ELU, ModuleList, Sequential
 from torch_geometric.nn.dense.linear import Linear
 from torch_geometric.nn import MessagePassing, BatchNorm, global_add_pool, global_mean_pool
 from torch_geometric.utils import add_self_loops
@@ -109,19 +109,19 @@ class CEALConv(MessagePassing):
             factor = self.aggMLP_factor
             hidden_dim = round(self.F_in * factor)
             self.mlp_w0 = Sequential(
-                torch.nn.Linear(self.F_in, hidden_dim), torch.nn.BatchNorm1d(hidden_dim), ELU(), torch.nn.Linear(hidden_dim, self.F_in)
+                torch.nn.Linear(self.F_in, hidden_dim), torch.nn.BatchNorm1d(hidden_dim), ReLU(), torch.nn.Linear(hidden_dim, self.F_in)
             )
             self.mlp_w1 = Sequential(
-                torch.nn.Linear(self.F_in, hidden_dim), torch.nn.BatchNorm1d(hidden_dim), ELU(), torch.nn.Linear(hidden_dim, self.F_in)
+                torch.nn.Linear(self.F_in, hidden_dim), torch.nn.BatchNorm1d(hidden_dim), ReLU(), torch.nn.Linear(hidden_dim, self.F_in)
             )
             self.mlp_w2 = Sequential(
-                torch.nn.Linear(self.F_in, hidden_dim), torch.nn.BatchNorm1d(hidden_dim), ELU(), torch.nn.Linear(hidden_dim, self.F_in)
+                torch.nn.Linear(self.F_in, hidden_dim), torch.nn.BatchNorm1d(hidden_dim), ReLU(), torch.nn.Linear(hidden_dim, self.F_in)
             )
             self.mlp_w3 = Sequential(
-                torch.nn.Linear(self.F_in, hidden_dim), torch.nn.BatchNorm1d(hidden_dim), ELU(), torch.nn.Linear(hidden_dim, self.F_in)
+                torch.nn.Linear(self.F_in, hidden_dim), torch.nn.BatchNorm1d(hidden_dim), ReLU(), torch.nn.Linear(hidden_dim, self.F_in)
             )
             self.mlp_w4 = Sequential(
-                torch.nn.Linear(self.F_in, hidden_dim), torch.nn.BatchNorm1d(hidden_dim), ELU(), torch.nn.Linear(hidden_dim, self.F_in)
+                torch.nn.Linear(self.F_in, hidden_dim), torch.nn.BatchNorm1d(hidden_dim), ReLU(), torch.nn.Linear(hidden_dim, self.F_in)
             )
             # self.mlp_w0 = Sequential(torch.nn.Linear(self.F_in, self.F_in))
             # self.mlp_w1 = Sequential(torch.nn.Linear(self.F_in, self.F_in))
@@ -151,15 +151,15 @@ class CEALConv(MessagePassing):
                 layer.reset_parameters()
         if self.aggMLP:
             self.mlp_w0[0].reset_parameters()
-            # self.mlp_w0[2].reset_parameters()
+            self.mlp_w0[2].reset_parameters()
             self.mlp_w1[0].reset_parameters()
-            # self.mlp_w1[2].reset_parameters()
+            self.mlp_w1[2].reset_parameters()
             self.mlp_w2[0].reset_parameters()
-            # self.mlp_w2[2].reset_parameters()
+            self.mlp_w2[2].reset_parameters()
             self.mlp_w3[0].reset_parameters()
-            # self.mlp_w3[2].reset_parameters()
+            self.mlp_w3[2].reset_parameters()
             self.mlp_w4[0].reset_parameters()
-            # self.mlp_w4[2].reset_parameters()
+            self.mlp_w4[2].reset_parameters()
 
     """
    The forward method defines the framwork of a layer's logic.

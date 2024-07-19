@@ -235,8 +235,8 @@ class CEALNetwork(torch.nn.Module):
         self.bns = torch.nn.ModuleList([torch.nn.BatchNorm1d(conv_out_dim) for i in range(num_layers)])
         self.drop_rate = drop_rate
 
-        # self.pool = global_mean_pool
-        self.pool = global_add_pool
+        self.pool = global_mean_pool
+        # self.pool = global_add_pool
 
         # post fc
         if self.post_fc_dim_factor is not None:

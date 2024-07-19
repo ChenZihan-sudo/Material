@@ -92,7 +92,7 @@ ceal_args["towers"] = 1
 ceal_args["pre_layers"] = 1
 ceal_args["post_layers"] = 1
 ceal_args["divide_input"] = False
-ceal_args["aggMLP"] = True
+ceal_args["aggMLP"] = False
 ceal_args["aggMLP_factor"] = 0.5
 
 # model parameters
@@ -102,14 +102,14 @@ ceal_args["num_pre_fc"] = None
 ceal_args["pre_fc_dim_factor"] = None
 
 ceal_args["num_layers"] = 1
-ceal_args["conv_out_dim"] = 150
+ceal_args["conv_out_dim"] = 200
 
-ceal_args["post_fc_dim"] = [75, 150, 75, 35]
+ceal_args["post_fc_dim"] = [100, 50, 100, 50, 25]
 # deprecated
 ceal_args["num_post_fc"] = None
 ceal_args["post_fc_dim_factor"] = None
 
-ceal_args["dropout_rate"] = 0.4
+ceal_args["dropout_rate"] = 0.45
 
 # train parameters
 ceal_args["epochs"] = 10000
@@ -119,7 +119,6 @@ ceal_args["sche_mode"] = "min"
 ceal_args["sche_factor"] = 0.85
 ceal_args["sche_patience"] = 30
 ceal_args["sche_min_lr"] = 1e-8
-
 
 # * PNA model
 args["PNA"] = {}
