@@ -364,7 +364,7 @@ class GCNNetwork(torch.nn.Module):
         self.out_dim = post_fc_dim if num_post_fc > 0 else conv_out_dim
         self.out_lin = torch.nn.Linear(self.out_dim, 1)
 
-    def forward(self, batch_data, node_embedding=True):
+    def forward(self, batch_data, node_embedding=False):
         # print("batch_data", batch_data)
         x, edge_index, edge_weight = batch_data.x, batch_data.edge_index, batch_data.edge_weight
         batch = batch_data.batch
