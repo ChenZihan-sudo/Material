@@ -5,7 +5,9 @@
 # *.cif
 
 /dataset/processed
-/dataset/raw/*.poscar
+/dataset/raw_mp/*.poscar
+/dataset/raw_opt_hypo/*FORMATION_ENERGY*
+/dataset/raw_opt_hypo/*POSCAR*
 
 /dataset.spglib*/processed
 /dataset.spglib*/raw/*.poscar
@@ -19,6 +21,6 @@ __pycache__
 .DS_Store
 *.code-workspace
 
+/.vscode
 /sample_data
-
-/Yuner_Codes/*
+/Yuner_Codes

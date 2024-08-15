@@ -47,8 +47,8 @@ def download_raw_data(exclude_elements=["O"], num_elements=(3, 3), keep_data_fro
         fields=["material_id", "formation_energy_per_atom", "structure"],
         exclude_elements=exclude_elements,
         num_elements=num_elements,
-        chunk_size=args["chunk_size"],
-        num_chunks=args["num_chunks"],
+        chunk_size=mp_args["chunk_size"],
+        num_chunks=mp_args["num_chunks"],
     )
 
     if keep_data_from is not None:
@@ -59,13 +59,13 @@ def download_raw_data(exclude_elements=["O"], num_elements=(3, 3), keep_data_fro
     return raw_datasets
 
 
-# Preprocess the raw data and store them in {DATASET_RAW_DIR}
+# Preprocess the raw data and store them in {DATASET_MP_RAW_DIR}
 def raw_data_preprocess(dest_dir, raw_datasets):
     indices = []
     pbar = tqdm(total=len(raw_datasets))
     pbar.set_description("to conventional")
     for i, d in enumerate(raw_datasets):
-        # Path where the poscar file is created. (e.g. {DATASET_RAW_DIR}/CONFIG_1.poscar)
+        # Path where the poscar file is created. (e.g. {DATASET_MP_RAW_DIR}/CONFIG_1.poscar)
         filename = osp.join(dest_dir, "CONFIG_" + str(i + 1) + ".poscar")
         # filename = osp.join(dest_dir, "CONFIG_" + str(i + 1) + ".cif")
         d.structure = d.structure.to_conventional()
@@ -82,7 +82,7 @@ def raw_data_preprocess(dest_dir, raw_datasets):
         pbar.update(1)
     pbar.close()
 
-    # Path where the indices csv file is created. (i.e. {DATASET_RAW_DIR}/INDICE)
+    # Path where the indices csv file is created. (i.e. {DATASET_MP_RAW_DIR}/INDICE)
     indices_filename = osp.join(dest_dir, "INDICES")
     with open(indices_filename, "w", newline="") as f:
         cw = csv.DictWriter(f, fieldnames=["idx", "mid", "formation_energy_per_atom"])
@@ -100,7 +100,7 @@ def read_one_compound_info(
     data.mid = mid
     data.idx = idx
 
-    filename = osp.join("{}".format(DATASET_RAW_DIR), "CONFIG_" + idx + ".poscar")
+    filename = osp.join("{}".format(DATASET_MP_RAW_DIR), "CONFIG_" + idx + ".poscar")
     compound = ase_read(filename, format="vasp")
 
     threshold = 1000
@@ -167,12 +167,12 @@ def read_one_compound_info(
 def raw_data_process(onehot_gen=True, onehot_range: list = None, optimize=args["data_optimize"], model_path=args["data_opt_model_path"]) -> list:
     """
     Args:
-    - onehot_gen: set `True` will generate atomic number onehot from all compoundd. Otherwise, use `onehot_range`.
+    - onehot_gen: set `True` will generate atomic number onehot from all compounds. Otherwise, using `onehot_range`.
     - onehot_range: if `onehot_gen` is not `True`, onehot of atomic number will use `range(onehot_range[0],onehot_range[-1])` instead.
     """
     print("Raw data processing...")
 
-    indices_filename = osp.join("{}".format(DATASET_RAW_DIR), "INDICES")
+    indices_filename = osp.join("{}".format(DATASET_MP_RAW_DIR), "INDICES")
     assert osp.exists(indices_filename), "INDICES file not exist in " + indices_filename
     with open(indices_filename) as f:
         reader = csv.reader(f)
@@ -186,7 +186,7 @@ def raw_data_process(onehot_gen=True, onehot_range: list = None, optimize=args["
     # if optimize is True:
     #     model, _ = load_model(model_path)
     #     model.eval()
-    #     onehot_dict_optimize = read_onehot_dict(DATASET_RAW_DIR, "onehot_dict.json")
+    #     onehot_dict_optimize = read_onehot_dict(DATASET_MP_RAW_DIR, "onehot_dict.json")
 
     # Process single graph
     data_list = []
@@ -210,7 +210,7 @@ def raw_data_process(onehot_gen=True, onehot_range: list = None, optimize=args["
     # Create one hot for data.x
     if onehot_gen is not None:
         atomic_number_set = set(list(range(onehot_range[0], onehot_range[-1])))
-    onehot_dict = make_onehot_dict(atomic_number_set)
+    onehot_dict = make_onehot_dict(atomic_number_set, data_path=mp_args["raw_dir"])
     for i, d in enumerate(data_list):
         d.x = torch.tensor(np.vstack([onehot_dict[i] for i in d.atomic_numbers]).astype(np.float32))
         delattr(d, "atomic_numbers")
@@ -221,13 +221,13 @@ def raw_data_process(onehot_gen=True, onehot_range: list = None, optimize=args["
     for i, d in enumerate(data_list):
         d.y = torch.Tensor(np.array([y_list[i]], dtype=np.float32))
 
-    # write parameters into {DATASET_RAW_DIR}/PARAMETERS
+    # write parameters into {DATASET_MP_RAW_DIR}/PARAMETERS
     atomic_numbers = list(atomic_number_set)
     atomic_numbers.sort()
     atomic_numbers = [int(a) for a in atomic_numbers]
     parameter = {"data_min": data_min, "data_max": data_max, "onehot_set": atomic_numbers}
-    # Path where the indices csv file is created. (i.e. {DATASET_RAW_DIR}/PARAMETERS)
-    filename = osp.join(DATASET_RAW_DIR, "PARAMETERS")
+    # Path where the indices csv file is created. (i.e. {DATASET_MP_RAW_DIR}/PARAMETERS)
+    filename = osp.join(DATASET_MP_RAW_DIR, "PARAMETERS")
     with open(filename, "w") as f:
         json.dump(parameter, f)
 
@@ -239,6 +239,7 @@ def raw_data_process(onehot_gen=True, onehot_range: list = None, optimize=args["
 class MPDataset(InMemoryDataset):
     def __init__(self, args, transform=None, pre_transform=None, pre_filter=None):
         self.args = args
+        self.mp_args = mp_args
         super().__init__(args["dataset_dir"], transform, pre_transform, pre_filter)
 
         path = osp.join(self.processed_dir, "data.pt")
@@ -249,11 +250,11 @@ class MPDataset(InMemoryDataset):
     def processed_file_names(self) -> list[str]:
         return ["data.pt"]
 
-    # Get all filenames from {DATASET_RAW_DIR}/INDICES, skip download if those files exist
+    # Get all filenames from {DATASET_MP_RAW_DIR}/INDICES, skip download if those files exist
     @property
     def raw_file_names(self) -> list[str]:
         filenames = ["INDICES"]
-        # indices_filename = osp.join("{}".format(DATASET_RAW_DIR), "INDICES")
+        # indices_filename = osp.join("{}".format(DATASET_MP_RAW_DIR), "INDICES")
         # if not osp.exists(indices_filename):
         #     return []
 
@@ -265,7 +266,7 @@ class MPDataset(InMemoryDataset):
 
     @property
     def raw_dir(self) -> str:
-        return self.args["dataset_raw_dir"]
+        return self.mp_args["raw_dir"]
 
     @property
     def processed_dir(self) -> str:
@@ -273,11 +274,11 @@ class MPDataset(InMemoryDataset):
 
     def download(self):
         print("Downloading raw dataset...")
-        raw_data = download_raw_data(keep_data_from=self.args["keep_data_from"])
+        raw_data = download_raw_data(keep_data_from=self.mp_args["keep_data_from"])
         raw_data_preprocess(self.raw_dir, raw_data)
 
     def process(self):
-        data_list = raw_data_process(onehot_gen=args["onehot_gen"], onehot_range=args["onehot_range"])
+        data_list = raw_data_process(onehot_gen=self.mp_args["onehot_gen"], onehot_range=self.mp_args["onehot_range"])
         self.data = data_list
 
         path = osp.join(self.processed_dir, "data.pt")
@@ -425,7 +426,7 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
     """
     hypo_args = args["hypothesis_dataset"]
 
-    indices_filename = osp.join("{}".format(DATASET_RAW_DIR), "INDICES")
+    indices_filename = osp.join("{}".format(DATASET_MP_RAW_DIR), "INDICES")
     assert osp.exists(indices_filename), "INDICES file not exist in " + indices_filename
     with open(indices_filename) as f:
         reader = csv.reader(f)
@@ -447,8 +448,8 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
     pbar = tqdm(total=total_processed)
     pbar.set_description("hypothesis compounds dataset processing")
 
-    # read one hot dict from {DATASET_RAW_DIR}/onehot_dict.json
-    onehot_dict = read_onehot_dict(DATASET_RAW_DIR, "onehot_dict.json")
+    # read one hot dict from {DATASET_MP_RAW_DIR}/onehot_dict.json
+    onehot_dict = read_onehot_dict(DATASET_MP_RAW_DIR, "onehot_dict.json")
 
     # split data if need
     step = int(len(indices) / split_num)
@@ -474,7 +475,7 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
         # d: one item in indices (e.g. i=0, d=['1', 'mp-861724', '-0.41328523750000556'])
         # read original compound data
         idx, mid, y = d[0], d[1], d[2]
-        filename = osp.join("{}".format(DATASET_RAW_DIR), "CONFIG_" + idx + ".poscar")
+        filename = osp.join("{}".format(DATASET_MP_RAW_DIR), "CONFIG_" + idx + ".poscar")
         original_compound = ase_read(filename, format="vasp")
 
         # get hypothesis ase compounds
@@ -536,6 +537,7 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
 class HypoDataset(Dataset):
     def __init__(self, args, transform=None, pre_transform=None, pre_filter=None):
         self.args = args
+        self.mp_args = self.args["mp_dataset"]
         self.hypo_args = self.args["hypothesis_dataset"]
         super().__init__(args["dataset_dir"], transform, pre_transform, pre_filter)
 
@@ -545,7 +547,7 @@ class HypoDataset(Dataset):
 
     @property
     def raw_dir(self) -> str:
-        return self.args["dataset_raw_dir"]
+        return self.mp_args["raw_dir"]
 
     @property
     def processed_file_names(self):

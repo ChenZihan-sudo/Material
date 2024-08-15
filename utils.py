@@ -12,9 +12,11 @@ from scipy.stats import gaussian_kde
 from torch_geometric.utils import degree
 
 
-def get_device() -> str:
+def get_device(device_name=None) -> str:
     device = None
-    if "device" in args:
+    if device_name is not None:
+        device = torch.device(device_name)
+    elif "device" in args:
         device = torch.device(args["device"])
     else:
         device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
@@ -156,9 +158,9 @@ def tensor_min_max_scalar_1d(data, new_min=0.0, new_max=1.0) -> tuple[list, torc
         return data, data_min, data_max
 
 
-# Get data scale from {DATASET_RAW_DIR}/PARAMETERS and write into args
-def get_data_scale(args):
-    filename = osp.join("{}".format(DATASET_RAW_DIR), "PARAMETERS")
+# Get data scale from {DATASET_MP_RAW_DIR}/PARAMETERS and write into args
+def get_data_scale(args, data_path=DATASET_MP_RAW_DIR):
+    filename = osp.join("{}".format(data_path), "PARAMETERS")
     if not osp.exists(filename):
         raise FileNotFoundError(filename, " not found.")
     with open(filename) as f:
@@ -193,7 +195,7 @@ def load_regression_results(folder, filename):
 
 
 # Plot the regression result
-def plot_regression_result(title, res_path, filename="regression_result.txt", plotfilename=None, disp=False):
+def plot_regression_result(title, res_path, filename="regression_result.txt", plotfilename=None, disp=False, scope=[]):
     """
     folder: the folder of the result file
     filename: the result file name
@@ -219,8 +221,14 @@ def plot_regression_result(title, res_path, filename="regression_result.txt", pl
     max_d = round(np.max(density))
     min_d = round(np.min(density))
 
+    if len(scope) == 4:
+        x_min = scope[0]
+        x_max = scope[1]
+        y_min = scope[2]
+        y_max = scope[3]
+
     sc = plt.scatter(x, y, c=density, cmap="bwr", s=8, marker="o")
-    plt.plot([min(x), max(x)], [min(y), max(y)], color="grey", linestyle="--")
+    plt.plot([x_min, x_max], [y_min, y_max], color="grey", linestyle="--")
 
     text_x = x_min + (x_max - x_min) * 0.7  # Adjust 0.7 to position the text along the line
     text_y = y_min + (y_max - y_min) * 0.1  # Adjust 0.7 to position the text along the line
@@ -276,7 +284,7 @@ def get_density(x, y):
     return density
 
 
-def make_onehot_dict(sets):
+def make_onehot_dict(sets, data_path=DATASET_MP_RAW_DIR):
     """
     make one hot dict
     """
@@ -292,7 +300,7 @@ def make_onehot_dict(sets):
     for f, o in zip(feature, onehots):
         dict[int(f[0])] = o.tolist()
 
-    filename = osp.join("{}".format(DATASET_RAW_DIR), "onehot_dict.json")
+    filename = osp.join("{}".format(data_path), "onehot_dict.json")
     with open(filename, "w") as file:
         json.dump(dict, file)
 

@@ -212,7 +212,7 @@ def get_high_pred_error_stats(dataloader, model_path, threshold=0.5):
     # read all ase file from the whole dataset
     whole_pred_ase = []
     for i, d in enumerate(all_dataset):
-        path = osp.join(args["dataset_raw_dir"], f"CONFIG_{int(d.idx)}.poscar")
+        path = osp.join(mp_args["raw_dir"], f"CONFIG_{int(d.idx)}.poscar")
         compound = ase_read(path, format="vasp")
         whole_pred_ase.append(compound)
     dataset_ase_stat = ase_data_stat(whole_pred_ase)
@@ -224,7 +224,7 @@ def get_high_pred_error_stats(dataloader, model_path, threshold=0.5):
     # read all ase file from high pred error compounds
     high_pred_ase = []
     for i, d in enumerate(high_pred_data):
-        path = osp.join(args["dataset_raw_dir"], f"CONFIG_{int(d.idx)}.poscar")
+        path = osp.join(mp_args["raw_dir"], f"CONFIG_{int(d.idx)}.poscar")
         compound = ase_read(path, format="vasp")
         high_pred_ase.append(compound)
     high_ase_stat = ase_data_stat(high_pred_ase)

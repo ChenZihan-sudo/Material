@@ -5,35 +5,47 @@ MP_API_KEY = "j61NN3yuDh8tQWf0OrkachbbUoJ8npVP"
 WORK_DIR = "."
 
 DATASET_ORIGIN_DIR = osp.join("{}".format(WORK_DIR), "dataset")
-DATASET_RAW_DIR = osp.join("{}".format(DATASET_ORIGIN_DIR), "raw")
+DATASET_MP_RAW_DIR = osp.join("{}".format(DATASET_ORIGIN_DIR), "raw_mp")
+DATASET_OPT_HYPO_RAW_DIR = osp.join("{}".format(DATASET_ORIGIN_DIR), "raw_opt_hypo")
 
 DATASET_DIR = osp.join("{}".format(WORK_DIR), "dataset.max_cutoff==3.5")
 DATASET_PROCESSED_DIR = osp.join("{}".format(DATASET_DIR), "processed")
+DATASET_OPT_HYPO_PROCESSED_DIR = osp.join("{}".format(DATASET_PROCESSED_DIR), "opt_hypo_data")
 
 args = {}
 
 args["dataset_dir"] = DATASET_DIR
-args["dataset_raw_dir"] = DATASET_RAW_DIR
 args["dataset_processed_dir"] = DATASET_PROCESSED_DIR
 
+# * Ignore the interactions beyond a certain distance.
 args["max_cutoff_distance"] = 3.5
-
 
 # * result path
 args["result_path"] = "./results"
 
-# * For dataset of Material Project
-args["chunk_size"] = 1000
-args["num_chunks"] = None
-args["keep_data_from"] = "./dataset/raw/INDICES"
-args["onehot_gen"] = False
-args["onehot_range"] = [1, 101]
+# * device
+args["device"] = "cuda"
+
+
+# * For dataset from Material Project
+args["mp_dataset"] = {}
+mp_args = args["mp_dataset"]
+mp_args["raw_dir"] = DATASET_MP_RAW_DIR
+mp_args["chunk_size"] = 1000
+mp_args["num_chunks"] = None
+# keep the data sorting from INDICES file
+mp_args["keep_data_from"] = "./dataset/raw/INDICES"
+mp_args["onehot_gen"] = False
+mp_args["onehot_range"] = [1, 101]
+# random split dataset
+args["trainset_ratio"] = 0.70
+args["valset_ratio"] = 0.15
+args["testset_ratio"] = 0.15
+args["split_dataset_seed"] = 777
 
 args["data_optimize"] = False
 args["data_opt_model_path"] = osp.join(args["result_path"], "CEAL/1717234278983621")
 
-# * device
-args["device"] = "cuda"
 
 # * For hypothesis dataset
 args["hypothesis_dataset"] = {}
@@ -47,15 +59,26 @@ hypo_args["split_num"] = 10
 # for large dataset
 hypo_args["data_dir"] = osp.join("{}".format(DATASET_PROCESSED_DIR), "hypo_data")
 
-# * random split dataset
-args["trainset_ratio"] = 0.70
-args["valset_ratio"] = 0.15
-args["testset_ratio"] = 0.15
-args["split_dataset_seed"] = 777
+
+# * For optimized hypothesis dataset
+args["optimized_hypothesis_dataset"] = {}
+opt_hypo_args = args["optimized_hypothesis_dataset"]
+opt_hypo_args["raw_dir"] = DATASET_OPT_HYPO_RAW_DIR
+opt_hypo_args["processed_dir"] = DATASET_OPT_HYPO_PROCESSED_DIR
+opt_hypo_args["onehot_gen"] = False
+opt_hypo_args["onehot_range"] = [1, 101]
+opt_hypo_args["dataset_total_num"] = 4542
+opt_hypo_args["formation_energy_filename"] = "FORMATION_ENERGY_"
+opt_hypo_args["compound_filename"] = "POSCAR_"
+# random split dataset
+opt_hypo_args["trainset_ratio"] = 0.70
+opt_hypo_args["valset_ratio"] = 0.15
+opt_hypo_args["testset_ratio"] = 0.15
+opt_hypo_args["split_dataset_seed"] = 777
+
 
 # * data loader
-# 1000 700 500
-args["batch_size"] = 1000
+args["batch_size"] = 800
 args["data_loader_shuffle"] = True
 args["data_loader_seed"] = 3407
 args["num_workers"] = 8
@@ -96,20 +119,20 @@ ceal_args["aggMLP"] = False
 ceal_args["aggMLP_factor"] = 0.5
 
 # model parameters
-ceal_args["pre_fc_dim"] = [50, 100]  # last one is conv_in_dim
+ceal_args["pre_fc_dim"] = [100]  # last one is conv_in_dim
 # deprecated
 ceal_args["num_pre_fc"] = None
 ceal_args["pre_fc_dim_factor"] = None
 
 ceal_args["num_layers"] = 1
-ceal_args["conv_out_dim"] = 200
+ceal_args["conv_out_dim"] = 100
 
-ceal_args["post_fc_dim"] = [100, 50, 100, 50, 25]
+ceal_args["post_fc_dim"] = [100]
 # deprecated
 ceal_args["num_post_fc"] = None
 ceal_args["post_fc_dim_factor"] = None
 
-ceal_args["dropout_rate"] = 0.45
+ceal_args["dropout_rate"] = 0.0
 
 # train parameters
 ceal_args["epochs"] = 10000
@@ -119,6 +142,7 @@ ceal_args["sche_mode"] = "min"
 ceal_args["sche_factor"] = 0.85
 ceal_args["sche_patience"] = 30
 ceal_args["sche_min_lr"] = 1e-8
+
 
 # * PNA model
 args["PNA"] = {}

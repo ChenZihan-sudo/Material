@@ -287,13 +287,13 @@ class CEALNetwork(torch.nn.Module):
         for i, lin in enumerate(self.pre_fc):
             out = lin(x) if i == 0 else lin(out)
             out = self.pre_fc_bns[i](out)
-            out = F.elu(out)
+            out = F.relu(out)
 
         # ceal conv layers
         for conv, bn in zip(self.convs, self.bns):
             out = conv(out, edge_index, batch, edge_attr)
             out = bn(out)
-            out = F.elu(out)
+            out = F.relu(out)
             out = F.dropout(out, p=self.drop_rate, training=self.training)
 
         # get node embedding instead of predicting the result
@@ -307,7 +307,7 @@ class CEALNetwork(torch.nn.Module):
         for i, lin in enumerate(self.post_fc):
             out = lin(out)
             out = self.post_fc_bns[i](out)
-            out = F.elu(out)
+            out = F.relu(out)
 
         out = self.out_lin(out)
 

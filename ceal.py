@@ -26,8 +26,7 @@ class CEALConv(MessagePassing):
         pre_layers=1,
         post_layers=1,
         divide_input=False,
-        aggMLP=True,
-        aggMLP_factor=1.0,
+        aggMLP=False,
         **kwargs,
     ):
         """
@@ -61,7 +60,6 @@ class CEALConv(MessagePassing):
         self.towers = towers
         self.divide_input = divide_input
         self.aggMLP = aggMLP
-        self.aggMLP_factor = aggMLP_factor
 
         self.F_in = in_channels // towers if divide_input else in_channels
         self.F_out = self.out_channels // towers
@@ -91,7 +89,7 @@ class CEALConv(MessagePassing):
         for _ in range(towers):
             modules = [Linear((3 if edge_dim else 2) * self.F_in, self.F_in)]
             for _ in range(pre_layers - 1):
-                modules += [ELU()]
+                modules += [ReLU()]
                 modules += [Linear(self.F_in, self.F_in)]
             self.pre_nns.append(Sequential(*modules))
 
@@ -99,35 +97,29 @@ class CEALConv(MessagePassing):
 
             modules = [Linear(in_channels, self.F_out)]
             for _ in range(post_layers - 1):
-                modules += [ELU()]
+                modules += [ReLU()]
                 modules += [Linear(self.F_out, self.F_out)]
             self.post_nns.append(Sequential(*modules))
 
         self.lin = Linear(out_channels, out_channels)
 
         if self.aggMLP:
-            factor = self.aggMLP_factor
-            hidden_dim = round(self.F_in * factor)
+            factor = 0.5
             self.mlp_w0 = Sequential(
-                torch.nn.Linear(self.F_in, hidden_dim), torch.nn.BatchNorm1d(hidden_dim), ReLU(), torch.nn.Linear(hidden_dim, self.F_in)
+                torch.nn.Linear(self.F_in, round(self.F_in * factor)), ReLU(), torch.nn.Linear(round(self.F_in * factor), self.F_in)
             )
             self.mlp_w1 = Sequential(
-                torch.nn.Linear(self.F_in, hidden_dim), torch.nn.BatchNorm1d(hidden_dim), ReLU(), torch.nn.Linear(hidden_dim, self.F_in)
+                torch.nn.Linear(self.F_in, round(self.F_in * factor)), ReLU(), torch.nn.Linear(round(self.F_in * factor), self.F_in)
             )
             self.mlp_w2 = Sequential(
-                torch.nn.Linear(self.F_in, hidden_dim), torch.nn.BatchNorm1d(hidden_dim), ReLU(), torch.nn.Linear(hidden_dim, self.F_in)
+                torch.nn.Linear(self.F_in, round(self.F_in * factor)), ReLU(), torch.nn.Linear(round(self.F_in * factor), self.F_in)
             )
             self.mlp_w3 = Sequential(
-                torch.nn.Linear(self.F_in, hidden_dim), torch.nn.BatchNorm1d(hidden_dim), ReLU(), torch.nn.Linear(hidden_dim, self.F_in)
+                torch.nn.Linear(self.F_in, round(self.F_in * factor)), ReLU(), torch.nn.Linear(round(self.F_in * factor), self.F_in)
             )
             self.mlp_w4 = Sequential(
-                torch.nn.Linear(self.F_in, hidden_dim), torch.nn.BatchNorm1d(hidden_dim), ReLU(), torch.nn.Linear(hidden_dim, self.F_in)
+                torch.nn.Linear(self.F_in, round(self.F_in * factor)), ReLU(), torch.nn.Linear(round(self.F_in * factor), self.F_in)
             )
-            # self.mlp_w0 = Sequential(torch.nn.Linear(self.F_in, self.F_in))
-            # self.mlp_w1 = Sequential(torch.nn.Linear(self.F_in, self.F_in))
-            # self.mlp_w2 = Sequential(torch.nn.Linear(self.F_in, self.F_in))
-            # self.mlp_w3 = Sequential(torch.nn.Linear(self.F_in, self.F_in))
-            # self.mlp_w4 = Sequential(torch.nn.Linear(self.F_in, self.F_in))
         else:
             self.agg_weights = torch.nn.Parameter(torch.rand(len(aggregators)))
 
