@@ -1,26 +1,16 @@
-*.pt
-!results/*/*/checkpoint.pt
+# Python defaults
+__pycache__/
 
-# *.poscar
-# *.cif
+# Project ignore
+dataset/processed/
+dataset/raw/
 
-/dataset/processed
-/dataset/raw_mp/*.poscar
-/dataset/raw_opt_hypo/*FORMATION_ENERGY*
-/dataset/raw_opt_hypo/*POSCAR*
+v1/
 
-/dataset.spglib*/processed
-/dataset.spglib*/raw/*.poscar
+/*.ipynb
+/*.py
+!main.py
+!utils.py
 
-/dataset.max_cutoff*/processed
-/dataset.max_cutoff*/raw/*.poscar
-
-/reference
-
-__pycache__
-.DS_Store
-*.code-workspace
-
-/.vscode
-/sample_data
-/Yuner_Codes
+results/
+!results/.gitkeep

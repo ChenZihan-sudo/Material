@@ -1,7 +1,0 @@
-使用原始的MyCEALNetwork进行training
-
-使用1层ceal
-
-与1721097051292066进行对比，参数无变动
-
-train_origin_ceal.ipynb

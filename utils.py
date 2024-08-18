@@ -1,32 +1,24 @@
 import torch
 import json
 import csv
-from args import *
 import os
 from os import path as osp
 import time
 import numpy as np
-import matplotlib.pyplot as plt
+
 from matplotlib.lines import Line2D
 from scipy.stats import gaussian_kde
-from torch_geometric.utils import degree
 
 
-def get_device(device_name=None) -> str:
+def get_device(device_name=None, args=None) -> str:
     device = None
     if device_name is not None:
         device = torch.device(device_name)
-    elif "device" in args:
-        device = torch.device(args["device"])
+    elif args is not None or "device" in args:
+        device = torch.device(args["Default"]["device"])
     else:
         device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     return device
-
-
-# For dataloader
-def worker_init_fn(worker_id):
-    np.random.seed(np.random.get_state()[1][0] + worker_id)
-    torch.manual_seed(np.random.get_state()[1][0] + worker_id)
 
 
 # Plot the training progress
@@ -35,14 +27,12 @@ def plot_training_progress(
     train_losses,
     val_losses,
     test_losses,
-    split=5,
     title="Loss vs. Epoch during Training",
     res_path=None,
     filename="train_progress.jpeg",
     threshold=1,
 ):
-    if epoch % split != 0 and res_path is None:
-        return
+    import matplotlib.pyplot as plt
 
     plt.figure(figsize=(8, 6))
     plt.xlabel("Epoch")
@@ -75,11 +65,11 @@ def plot_training_progress(
     plt.legend(handles=legend_entries, loc="upper right")
 
     # save the train graph
-    if res_path is not None:
-        filename = osp.join(res_path, filename)
-        plt.savefig(filename)
+    filename = osp.join(res_path, filename)
+    plt.savefig(filename)
 
     plt.pause(0.001)
+    plt.close()
 
 
 # Save hyper parameters
@@ -158,8 +148,7 @@ def tensor_min_max_scalar_1d(data, new_min=0.0, new_max=1.0) -> tuple[list, torc
         return data, data_min, data_max
 
 
-# Get data scale from {DATASET_MP_RAW_DIR}/PARAMETERS and write into args
-def get_data_scale(args, data_path=DATASET_MP_RAW_DIR):
+def get_data_scale(data_path):
     filename = osp.join("{}".format(data_path), "PARAMETERS")
     if not osp.exists(filename):
         raise FileNotFoundError(filename, " not found.")
@@ -200,6 +189,9 @@ def plot_regression_result(title, res_path, filename="regression_result.txt", pl
     folder: the folder of the result file
     filename: the result file name
     """
+
+    import matplotlib.pyplot as plt
+
     # data_min, data_max = get_data_scale(args)
 
     y, x = load_regression_results(res_path, filename)
@@ -261,6 +253,8 @@ def plot_regression_result(title, res_path, filename="regression_result.txt", pl
     plt.grid(True)
     if disp:
         plt.show()
+    else:
+        plt.close()
 
 
 # R^2 of predicted vs true values
@@ -284,7 +278,7 @@ def get_density(x, y):
     return density
 
 
-def make_onehot_dict(sets, data_path=DATASET_MP_RAW_DIR):
+def make_onehot_dict(sets, data_path):
     """
     make one hot dict
     """
@@ -321,20 +315,64 @@ def read_onehot_dict(path, filename="onehot_dict.json"):
     return data
 
 
-def generate_deg(dataset):
-    max_degree = -1
-    for data in dataset:
-        d = degree(data.edge_index[1], num_nodes=data.num_nodes, dtype=torch.long)
-        # find the max degree in the whole dateset
-        max_degree = max(max_degree, int(d.max()))
-
-    # Compute the in-degree histogram tensor
-    deg = torch.zeros(max_degree + 1, dtype=torch.long)
-    for data in dataset:
-        d = degree(data.edge_index[1], num_nodes=data.num_nodes, dtype=torch.long)
-        deg += torch.bincount(d, minlength=deg.numel())
-    return deg
-
-
 def edge_weight_to_edge_attr(data):
     return torch.unsqueeze(data, dim=1)
+
+
+# # resolution: steps, one-dimensional tensor of size steps whose values are evenly spaced from start to end
+# # width: standard variance in gaussian function
+# class GaussianSmearing(torch.nn.Module):
+#     def __init__(self, start, stop, resolution=None, width=None, **args):
+#         super(GaussianSmearing, self).__init__()
+#         offset = torch.linspace(start, stop, resolution)
+#         self.coeff = -0.5 / ((stop - start) * width) ** 2
+#         self.register_buffer("offset", offset)
+
+#     def forward(self, dist):
+#         dist = dist.unsqueeze(-1) - self.offset.view(1, -1)
+#         return torch.exp(self.coeff * torch.pow(dist, 2))
+
+
+# resolution: steps, one-dimensional tensor of size steps whose values are evenly spaced from start to end
+# width: standard variance in gaussian function
+def gaussian_smearing(start, stop, dist, resolution=None, width=None, **args):
+    offset = torch.linspace(start, stop, resolution)
+    coeff = -0.5 / ((stop - start) * width) ** 2
+    dist = dist.unsqueeze(-1) - offset.view(1, -1)
+    return torch.exp(coeff * torch.pow(dist, 2))
+
+
+def normalization_1d(data, origin_min=None, origin_max=None, normalized_min=None, normalized_max=None):
+    import torch
+
+    assert isinstance(data, torch.Tensor), "data is not a torch.Tensor"
+
+    origin_min = origin_min if origin_min is not None else torch.min(data).item()
+    origin_max = origin_max if origin_max is not None else torch.max(data).item()
+
+    core = (data - origin_min) / (origin_max - origin_min)
+    normalized_data = core * (normalized_max - normalized_min) + normalized_min
+    return normalized_data, origin_min, origin_max
+
+
+def reverse_normalization_1d(normalized_data, normalized_min, normalized_max, origin_min, origin_max):
+    import torch
+
+    assert isinstance(normalized_data, torch.Tensor), "data is not a torch.Tensor"
+
+    core = (normalized_data - normalized_min) / (normalized_max - normalized_min)
+    data_original = core * (origin_max - origin_min) + origin_min
+    return data_original
+
+
+def distance_matrix_cutoff(matrix, max_distance_cutoff, max_neighbors=None):
+    from scipy.stats import rankdata
+
+    mask = matrix > max_distance_cutoff
+    distance_matrix_trimmed = np.ma.array(matrix, mask=mask)
+    distance_matrix_trimmed = rankdata(distance_matrix_trimmed, method="ordinal", axis=1)
+    distance_matrix_trimmed = np.nan_to_num(np.where(mask, np.nan, distance_matrix_trimmed))
+    if max_neighbors is not None:
+        distance_matrix_trimmed[distance_matrix_trimmed > max_neighbors + 1] = 0
+    distance_matrix_trimmed = np.where(distance_matrix_trimmed == 0, distance_matrix_trimmed, matrix)
+    return distance_matrix_trimmed

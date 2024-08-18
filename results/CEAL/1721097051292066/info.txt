@@ -1,4 +1,0 @@
-使用了global_add_pool
-与1721094189612727进行对比，参数无变动
-添加了pre和post的batch norm层进行对比。
-train_ceal_2.ipynb

@@ -1,4 +1,0 @@
-使用了global_add_pool
-使用leaky_relu做激活函数
-与1721097051292066进行对比，参数无变动
-train_ceal.ipynb

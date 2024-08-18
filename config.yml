@@ -1,0 +1,142 @@
+Default:
+  device: cuda:0
+  result_path: results
+  dataset_dir: dataset
+
+Process:
+  raw_dir: "{{Default.dataset_dir}}/raw"
+  processed_dir: "{{Default.dataset_dir}}/processed"
+  max_cutoff_distance: 8.0
+  max_cutoff_neighbors:
+  edge:
+    normalization: true
+    edge_feature: 50
+    gaussian_smearing: 
+      enable: true
+      resolution: "{{Process.edge.edge_feature}}"
+      width: 0.2
+  process: MPDataset
+
+Training:
+  model: ChemGNN
+  resume_from_checkpoint: false # resume training progress from a checkpoint
+  dataset:
+    name: MPDataset # MPDataset;HypothesisDataset;OptimizedHypoDataset
+    trainset_ratio: 0.8
+    valset_ratio: 0.05
+    testset_ratio: 0.15
+    seed: 1
+  data_loader:
+    batch_size: 500
+    num_workers: 8
+    seed: 1
+  save_best_model: true # get best model based on best test loss
+  save_step: 2 # save results every save_step epochs
+  save_result_on: "{{Default.result_path}}"
+
+Dataset:
+  MPDataset: # Material Project
+    raw_dir: "{{Process.raw_dir}}/mp"
+    processed_dir: "{{Process.processed_dir}}/mp_edge_feature_max_distance"
+    api_key: j61NN3yuDh8tQWf0OrkachbbUoJ8npVP
+    chunk_size: 1000
+    num_chunks:
+    keep_data_from: "{{Dataset.MPDataset.raw_dir}}/origin_INDICES" # keep the data sorting from the INDICES file
+    onehot_gen: false
+    onehot_range: [1, 101]
+    get_parameters_from: "{{Dataset.MPDataset.raw_dir}}"
+  HypoDataset: # Unoptimized Hypothesis Compounds
+    processed_dir: "{{Process.processed_dir}}/hypo"
+    scales: [0.96, 0.98, 1.00, 1.02, 1.04]
+    atomic_numbers: [58, 27, 29]
+    processed_filename: data # processed data filename
+    processed_ase_filename: ase_data
+    split_num: 10 # split dataset to multiple data block
+    get_parameters_from: "{{Dataset.MPDataset.raw_dir}}"
+  OptimizedHypoDataset: # Optimized Hypothesis Compounds
+    raw_dir: "{{Process.raw_dir}}/opt_hypo"
+    processed_dir: "{{Process.processed_dir}}/opt_hypo"
+    onehot_gen: false
+    onehot_range: [1, 101]
+    total_num: 4542
+    formation_energy_filename: FORMATION_ENERGY_
+    compound_filename: POSCAR_
+    get_parameters_from: "{{Dataset.OptimizedHypoDataset.raw_dir}}"
+
+Models:
+  ChemGNN:
+    conv_params:
+      aggregators: [sum, mean, min, max, std]
+      scalers: [identity]
+      edge_dim: "{{Process.edge.edge_feature}}"
+      towers: 1
+      pre_layers: 1
+      post_layers: 1
+      divide_input: false
+      aggMLP: false
+    pre_fc_dim: [100]
+    num_layers: 1
+    conv_out_dim: 100
+    post_fc_dim: [150]
+    dropout_rate: 0.0
+    pool: "global_mean_pool"
+    epochs: 1000
+    learning_rate: 0.02
+    optimizer:
+      name: AdamW
+      params:
+    scheduler:
+      name: ReduceLROnPlateau
+      params:
+        mode: min
+        factor: 0.85
+        patience: 10
+        min_lr: 0.00000001
+  PNA:
+    conv_params:
+      aggregators: [sum, mean, min, max, std]
+      scalers: [identity, amplification, attenuation]
+      edge_dim: "{{Process.edge.edge_feature}}"
+      towers: 1
+      pre_layers: 1
+      post_layers: 1
+      divide_input: false
+    pre_fc_dim: [100]
+    num_layers: 1
+    conv_out_dim: 100
+    post_fc_dim: [150, 150]
+    dropout_rate: 0.3
+    pool: "global_mean_pool"
+    epochs: 1000
+    learning_rate: 0.01
+    optimizer:
+      name: AdamW
+      params:
+    scheduler:
+      name: ReduceLROnPlateau
+      params:
+        mode: min
+        factor: 0.85
+        patience: 30
+        min_lr: 0.00000001
+  GCN:
+    conv_params:
+      improved: true
+    pre_fc_dim: [200, 200]
+    num_layers: 2
+    conv_out_dim: 100
+    post_fc_dim: [200, 200]
+    dropout_rate: 0.6
+    pool: "global_mean_pool"
+    epochs: 1000
+    learning_rate: 0.01
+    optimizer:
+      name: AdamW
+      params:
+    scheduler:
+      name: ReduceLROnPlateau
+      params:
+        mode: min
+        factor: 0.85
+        patience: 30
+        min_lr: 0.00000001

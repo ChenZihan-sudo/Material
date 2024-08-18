@@ -1,5 +1,0 @@
-使用了global_add_pool
-使用relu做激活函数
-model.py无变动
-与1721097051292066进行对比，(*)aggMLP_factor由0.7提高到1.5
-train_ceal.ipynb
