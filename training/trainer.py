@@ -72,7 +72,7 @@ def save_result_data(
 #     return model_object
 
 
-def start_training(dataset_name, model_name, args):
+def start_training(model_name, dataset_name, args):
 
     print(f"############ Start Training on {model_name} with {dataset_name} ############")
     train_args = args["Training"]
@@ -80,7 +80,7 @@ def start_training(dataset_name, model_name, args):
     model_args = args["Models"][model_name]
 
     # make dataset and data loader
-    train_dataset, validation_dataset, test_dataset = make_dataset(dataset_name, args)
+    train_dataset, validation_dataset, test_dataset = make_dataset(dataset_name, args, **(train_args["dataset"]))
     dataloader_args = train_args["data_loader"]
     train_loader, val_loader, test_loader = make_data_loader(train_dataset, validation_dataset, test_dataset, **dataloader_args)
 

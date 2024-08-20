@@ -1,17 +1,18 @@
 Default:
-  device: cuda:0
+  absolute_work_dir: /home/catcolia/Desktop/Material
+  device: cuda
   result_path: results
   dataset_dir: dataset
 
 Process:
-  raw_dir: "{{Default.dataset_dir}}/raw"
-  processed_dir: "{{Default.dataset_dir}}/processed"
+  raw_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/raw"
+  processed_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/processed"
   max_cutoff_distance: 8.0
-  max_cutoff_neighbors:
+  max_cutoff_neighbors: 20
   edge:
     normalization: true
     edge_feature: 50
-    gaussian_smearing: 
+    gaussian_smearing:
       enable: true
       resolution: "{{Process.edge.edge_feature}}"
       width: 0.2
@@ -23,28 +24,46 @@ Training:
   dataset:
     name: MPDataset # MPDataset;HypothesisDataset;OptimizedHypoDataset
     trainset_ratio: 0.8
-    valset_ratio: 0.05
-    testset_ratio: 0.15
+    valset_ratio: 0.1
+    testset_ratio: 0.1
     seed: 1
   data_loader:
     batch_size: 500
-    num_workers: 8
+    num_workers: 2
     seed: 1
   save_best_model: true # get best model based on best test loss
   save_step: 2 # save results every save_step epochs
-  save_result_on: "{{Default.result_path}}"
+  save_result_on: "{{Default.absolute_work_dir}}/{{Default.result_path}}"
+
+Tuning:
+  storage_path: "{{Default.absolute_work_dir}}/results/tune"
+  log_to_file: true # log trainable output
+  model:
+    name: ChemGNN
+  dataset:
+    name: MPDataset # MPDataset;HypothesisDataset;OptimizedHypoDataset
+    trainset_ratio: 0.1
+    valset_ratio: 0.1
+    testset_ratio: 0.8
+    seed: 1
+  data_loader:
+    batch_size:
+    num_workers: 2
+    seed: 1
+  trial_num_samples: 10
+  max_concurrent_trials: 1
 
 Dataset:
   MPDataset: # Material Project
     raw_dir: "{{Process.raw_dir}}/mp"
-    processed_dir: "{{Process.processed_dir}}/mp_edge_feature_max_distance"
+    processed_dir: "{{Process.processed_dir}}/m"
     api_key: j61NN3yuDh8tQWf0OrkachbbUoJ8npVP
     chunk_size: 1000
     num_chunks:
     keep_data_from: "{{Dataset.MPDataset.raw_dir}}/origin_INDICES" # keep the data sorting from the INDICES file
     onehot_gen: false
     onehot_range: [1, 101]
-    get_parameters_from: "{{Dataset.MPDataset.raw_dir}}"
+    get_parameters_from: "{{Dataset.MPDataset.processed_dir}}"
   HypoDataset: # Unoptimized Hypothesis Compounds
     processed_dir: "{{Process.processed_dir}}/hypo"
     scales: [0.96, 0.98, 1.00, 1.02, 1.04]
@@ -75,7 +94,7 @@ Models:
       divide_input: false
       aggMLP: false
     pre_fc_dim: [100]
-    num_layers: 1
+    num_layers: 2
     conv_out_dim: 100
     post_fc_dim: [150]
     dropout_rate: 0.0
@@ -116,7 +135,7 @@ Models:
       name: ReduceLROnPlateau
       params:
         mode: min
-        factor: 0.85
+        factor: 0.8
         patience: 30
         min_lr: 0.00000001
   GCN:
@@ -137,6 +156,6 @@ Models:
       name: ReduceLROnPlateau
       params:
         mode: min
-        factor: 0.85
+        factor: 0.8
         patience: 30
         min_lr: 0.00000001

@@ -7,7 +7,7 @@ from torch.nn import Linear, ReLU, Sequential, ModuleList, BatchNorm1d
 import torch_geometric.nn
 
 from torch_geometric.nn import GCNConv
-
+from .utils import convert_fc_dim
 
 class GCN(torch.nn.Module):
     def __init__(
@@ -25,6 +25,8 @@ class GCN(torch.nn.Module):
         super().__init__()
 
         assert num_layers > 0, "num layer should >0"
+        pre_fc_dim = convert_fc_dim(pre_fc_dim)
+        post_fc_dim = convert_fc_dim(post_fc_dim)
 
         self.in_dim = in_dim
         self.conv_out_dim = conv_out_dim

@@ -12,5 +12,9 @@ v1/
 !main.py
 !utils.py
 
-results/
-!results/.gitkeep
+results/ChemGNN
+results/GCN
+results/PNA
+results/tune
+
+.ipynb_checkpoints/

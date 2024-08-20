@@ -1,0 +1,54 @@
+# All Tune configurations can be inherited from the original config.yml.
+# The original config.yml settings that overlap with the Tune configurations
+# will be replaced by the Tune configurations.
+
+# ===============Template===============
+# value: # any value you want to tune in here
+#   tune: [method, *params]
+#
+# Paramters 
+# tune   => tags for recognization
+# method => search methods in tune or customed by the user
+# params => search params
+# ======================================
+
+Tuning:
+  data_loader:
+    batch_size:
+      tune: [qrandint, 100, 200, 100]
+
+Models:
+  ChemGNN:
+    # conv_params:
+    #   aggregators: [sum, mean, min, max, std]
+    #   scalers: [identity]
+    #   towers: 1
+    #   pre_layers: 1
+    #   post_layers: 1
+    #   divide_input: false
+    #   aggMLP: false
+    pre_fc_dim:
+      tune: [fc_dim, [1, 4, 1], [25, 200, 25]] # num_layers dim, qrandint
+    num_layers:
+      tune: [qrandint, 1, 4, 1]
+    conv_out_dim:
+      tune: [qrandint, 25, 200, 25] 
+    post_fc_dim:
+      tune: [fc_dim, [1, 4, 1], [25, 200, 25]]
+    # dropout_rate: 0.0
+    pool:
+      tune: [choice, ["global_mean_pool", "global_add_pool", "global_max_pool"]]
+    epochs:
+      tune: [choice, [100]]
+    learning_rate:
+      tune: [loguniform, 0.0001, 0.05]
+    # optimizer:
+    #   name: AdamW
+    #   params:
+    # scheduler:
+    #   name: ReduceLROnPlateau
+    #   params:
+    #     mode: min
+    #     factor: 0.85
+    #     patience: 10
+    #     min_lr: 0.00000001

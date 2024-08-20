@@ -168,6 +168,7 @@ def raw_data_process(args, onehot_gen=False, onehot_range: list = None) -> list:
     pbar.close()
 
     # Create one hot for data.x
+    print("process one hot for nodes...")
     if onehot_gen is False:
         atomic_number_set = set(list(range(onehot_range[0], onehot_range[-1])))
     onehot_dict = make_onehot_dict(atomic_number_set, data_path=d_args["raw_dir"])
@@ -203,7 +204,7 @@ def raw_data_process(args, onehot_gen=False, onehot_range: list = None) -> list:
     atomic_numbers = [int(a) for a in atomic_numbers]
     parameter = {"data_min": data_min, "data_max": data_max, "onehot_set": atomic_numbers}
     # Path where the indices csv file is created. (i.e. {DATASET_MP_RAW_DIR}/PARAMETERS)
-    filename = osp.join(d_args["processed"], "PARAMETERS")
+    filename = osp.join(d_args["processed_dir"], "PARAMETERS")
     with open(filename, "w") as f:
         json.dump(parameter, f)
 

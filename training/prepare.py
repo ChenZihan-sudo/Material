@@ -11,7 +11,7 @@ def worker_init_fn(worker_id):
 
 
 def make_data_loader(train_set, val_set, test_set, batch_size=None, seed=None, num_workers=None) -> list:
-    assert batch_size is not None or seed is not None or num_workers is not None, "parameters need to make data loader"
+    assert batch_size is not None or seed is not None or num_workers is not None, "parameters are needed to make data loader"
     from torch_geometric.loader import DataLoader
 
     g = torch.Generator().manual_seed(seed)

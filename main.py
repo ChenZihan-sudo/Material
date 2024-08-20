@@ -20,9 +20,15 @@ parser.add_argument(
     help="Location of config file (default: config.yml)",
 )
 
+parser.add_argument(
+    "--tune_config_path",
+    default="tuning/tune_config.yml",
+    type=str,
+    help="Location of tune config file (default: tuning/tune_config.yml)",
+)
+
 # Get arguments from command line
 cmd_args = parser.parse_args(sys.argv[1:])
-
 
 
 def convert_str_to_number(d):
@@ -32,7 +38,7 @@ def convert_str_to_number(d):
                 if v.isdecimal():  # 判断是否为整数
                     d[k] = int(v)
                 elif v.isdigit():  # 判断是否为浮点数
-                    d[k] = float(v)            
+                    d[k] = float(v)
             else:
                 convert_str_to_number(v)  # 递归处理嵌套结构
     return d
@@ -54,8 +60,18 @@ def yaml_from_template(config_path, recursive_render_time=5):
     return config
 
 
-config = yaml_from_template(cmd_args.config_path, recursive_render_time=4)
+config = yaml_from_template(cmd_args.config_path, recursive_render_time=10)
 config = convert_str_to_number(config)
+
+
+# import ray
+
+# from ray.tune.search.sample import Float
+# def a(default: Float):
+#     print(default.domain_str)
+
+# a(config["Models"]["ChemGNN"]["learning_rate"])
+
 
 # print(config)
 # def a(onehot_gen=None, **kwargs):
@@ -73,8 +89,21 @@ config = convert_str_to_number(config)
 # print(config)
 
 
-import process
-process.MPDataset(config)
-
 # import training
-# training.start_training("MPDataset", "ChemGNN", config)
+
+# training.start_training("ChemGNN", "MPDataset", config)
+
+# import process
+# process.MPDataset(config)
+# process.make_dataset("MPDataset", config, **(config["Training"]["dataset"]))
+
+
+
+import tuning
+from tuning.prepare import make_tune_config
+
+tune_config = yaml_from_template(cmd_args.tune_config_path, recursive_render_time=0)
+config = make_tune_config(config, tune_config)
+tuning.start_tuning("ChemGNN", "MPDataset", config)
+
+

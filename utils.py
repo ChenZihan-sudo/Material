@@ -376,3 +376,11 @@ def distance_matrix_cutoff(matrix, max_distance_cutoff, max_neighbors=None):
         distance_matrix_trimmed[distance_matrix_trimmed > max_neighbors + 1] = 0
     distance_matrix_trimmed = np.where(distance_matrix_trimmed == 0, distance_matrix_trimmed, matrix)
     return distance_matrix_trimmed
+
+
+def get_current_time() -> str:
+    from datetime import datetime
+
+    now = datetime.now()
+    formatted_date = now.strftime("%Y-%m-%d_%H-%M-%S")
+    return formatted_date

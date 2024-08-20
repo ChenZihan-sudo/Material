@@ -7,7 +7,7 @@ from torch.nn import Linear, ReLU, Sequential, ModuleList, BatchNorm1d
 import torch_geometric.nn
 
 from .ceal import CEALConv
-
+from .utils import convert_fc_dim
 
 class ChemGNN(torch.nn.Module):
     def __init__(
@@ -24,9 +24,13 @@ class ChemGNN(torch.nn.Module):
         **kwargs,
     ):
         super().__init__()
-        
-        assert num_layers > 0, "num layer should >0"
 
+        assert num_layers > 0, "num layer should >0"
+        pre_fc_dim = convert_fc_dim(pre_fc_dim)
+        post_fc_dim = convert_fc_dim(post_fc_dim)
+        print("fc_dim", pre_fc_dim, post_fc_dim)
+
+        # definitions in class
         self.deg = deg
 
         self.in_dim = in_dim

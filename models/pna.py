@@ -7,9 +7,10 @@ from torch.nn import Linear, ReLU, Sequential, ModuleList, BatchNorm1d
 import torch_geometric.nn
 
 from torch_geometric.nn import PNAConv
+from .utils import convert_fc_dim
 
 
-# (in_dim)pre_fc(pre_fc_dim) => convs(conv_out_dim) => post_fc(post_fc_dim)
+# (in_dim)pre_fc(pre_fc_im) => convs(conv_out_dim) => post_fc(post_fc_dim)
 class PNA(torch.nn.Module):
     def __init__(
         self,
@@ -27,6 +28,8 @@ class PNA(torch.nn.Module):
         super().__init__()
 
         assert num_layers > 0, "num layer should >0"
+        pre_fc_dim = convert_fc_dim(pre_fc_dim)
+        post_fc_dim = convert_fc_dim(post_fc_dim)
 
         self.deg = deg
 
