@@ -6,7 +6,7 @@
 # value: # any value you want to tune in here
 #   tune: [method, *params]
 #
-# Paramters 
+# Paramters
 # tune   => tags for recognization
 # method => search methods in tune or customed by the user
 # params => search params
@@ -15,7 +15,7 @@
 Tuning:
   data_loader:
     batch_size:
-      tune: [qrandint, 100, 200, 100]
+      tune: [choice, [600]] # [qrandint, 100, 500, 100]
 
 Models:
   ChemGNN:
@@ -32,7 +32,7 @@ Models:
     num_layers:
       tune: [qrandint, 1, 4, 1]
     conv_out_dim:
-      tune: [qrandint, 25, 200, 25] 
+      tune: [qrandint, 25, 200, 25]
     post_fc_dim:
       tune: [fc_dim, [1, 4, 1], [25, 200, 25]]
     # dropout_rate: 0.0

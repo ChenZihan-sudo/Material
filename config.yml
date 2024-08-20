@@ -8,10 +8,10 @@ Process:
   raw_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/raw"
   processed_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/processed"
   max_cutoff_distance: 8.0
-  max_cutoff_neighbors: 20
+  max_cutoff_neighbors: 
   edge:
     normalization: true
-    edge_feature: 50
+    edge_feature: 10
     gaussian_smearing:
       enable: true
       resolution: "{{Process.edge.edge_feature}}"
@@ -42,21 +42,21 @@ Tuning:
     name: ChemGNN
   dataset:
     name: MPDataset # MPDataset;HypothesisDataset;OptimizedHypoDataset
-    trainset_ratio: 0.1
+    trainset_ratio: 0.8
     valset_ratio: 0.1
-    testset_ratio: 0.8
+    testset_ratio: 0.1
     seed: 1
   data_loader:
     batch_size:
-    num_workers: 2
+    num_workers: 1
     seed: 1
-  trial_num_samples: 10
+  trial_num_samples: 60
   max_concurrent_trials: 1
 
 Dataset:
   MPDataset: # Material Project
     raw_dir: "{{Process.raw_dir}}/mp"
-    processed_dir: "{{Process.processed_dir}}/m"
+    processed_dir: "{{Process.processed_dir}}/mp_neigbor_all_edge_10"
     api_key: j61NN3yuDh8tQWf0OrkachbbUoJ8npVP
     chunk_size: 1000
     num_chunks:

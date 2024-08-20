@@ -44,11 +44,11 @@ class ChemGNN(torch.nn.Module):
         self.num_pre_fc = len(self.pre_fc_dim)
         self.conv_in_dim = pre_fc_dim[-1] if self.num_pre_fc > 0 else in_dim
         self.pre_fc = torch.nn.ModuleList()
-        self.pre_fc_bns = torch.nn.ModuleList()
+        # self.pre_fc_bns = torch.nn.ModuleList()
         last_dim = in_dim
         for i in range(self.num_pre_fc):
             self.pre_fc.append(torch.nn.Linear(last_dim, self.pre_fc_dim[i]))
-            self.pre_fc_bns.append(BatchNorm1d(self.pre_fc_dim[i]))
+            # self.pre_fc_bns.append(BatchNorm1d(self.pre_fc_dim[i]))
             last_dim = self.pre_fc_dim[i]
 
         # ceal convs
@@ -69,11 +69,11 @@ class ChemGNN(torch.nn.Module):
         self.num_post_fc = len(self.post_fc_dim)
         self.out_dim = post_fc_dim[-1] if self.num_post_fc > 0 else conv_out_dim
         self.post_fc = torch.nn.ModuleList()
-        self.post_fc_bns = torch.nn.ModuleList()
+        # self.post_fc_bns = torch.nn.ModuleList()
         last_dim = conv_out_dim
         for i in range(self.num_post_fc):
             self.post_fc.append(torch.nn.Linear(last_dim, self.post_fc_dim[i]))
-            self.post_fc_bns.append(BatchNorm1d(self.post_fc_dim[i]))
+            # self.post_fc_bns.append(BatchNorm1d(self.post_fc_dim[i]))
             last_dim = self.post_fc_dim[i]
 
         self.out_lin = torch.nn.Linear(self.out_dim, 1)
@@ -87,7 +87,7 @@ class ChemGNN(torch.nn.Module):
         # pre full connect
         for i, lin in enumerate(self.pre_fc):
             out = lin(x) if i == 0 else lin(out)
-            out = self.pre_fc_bns[i](out)
+            # out = self.pre_fc_bns[i](out)
             out = F.relu(out)
 
         # ceal conv layers
@@ -107,7 +107,7 @@ class ChemGNN(torch.nn.Module):
         # post full connect
         for i, lin in enumerate(self.post_fc):
             out = lin(out)
-            out = self.post_fc_bns[i](out)
+            # out = self.post_fc_bns[i](out)
             out = F.relu(out)
 
         out = self.out_lin(out)

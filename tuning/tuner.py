@@ -21,17 +21,19 @@ from datetime import datetime
 
 from functools import partial
 
+# def trainable_model(args, model_name=None, dataset_name=None):
 
-def trainable_model(args, model_name=None, dataset_name=None):
 
+def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
     print(f"############ Start Hyperparameter Tuning on {model_name} with {dataset_name} ############")
-    print("Hyperparameters: ", args)
+    # print("Hyperparameters: ", args)
 
     tune_args = args["Tuning"]
     model_args = args["Models"][model_name]
 
     # make dataset and data loader
-    train_dataset, validation_dataset, test_dataset = make_dataset(dataset_name, args, **(tune_args["dataset"]))
+    # train_dataset, validation_dataset, test_dataset = make_dataset(dataset_name, args, **(tune_args["dataset"]))
+    train_dataset, validation_dataset, test_dataset = dataset
     dataloader_args = tune_args["data_loader"]
     train_loader, val_loader, test_loader = make_data_loader(train_dataset, validation_dataset, test_dataset, **dataloader_args)
 
@@ -75,7 +77,7 @@ def trainable_model(args, model_name=None, dataset_name=None):
 
 
 def start_tuning(model_name, dataset_name, args):
-    ray.init(num_gpus=1, num_cpus=1)
+    ray.init(num_gpus=1, num_cpus=16)
 
     tune_args = args["Tuning"]
     print(tune_args)
@@ -96,9 +98,13 @@ def start_tuning(model_name, dataset_name, args):
     log_to_file = osp.join(storage_path, trial_name, "output.log") if tune_args["log_to_file"] else False
     print(f"Log file about trainable object save on {log_to_file}.")
 
-    trainable = partial(trainable_model, model_name=model_name, dataset_name=dataset_name)
+    # trainable = partial(trainable_model, model_name=model_name, dataset_name=dataset_name)
+
+    # create dataset in here
+    dataset = make_dataset(dataset_name, args, **(tune_args["dataset"]))
+    trainable = tune.with_parameters(trainable_model, dataset=dataset, model_name=model_name, dataset_name=dataset_name)
     tuner = tune.Tuner(
-        tune.with_resources(trainable, resources={"gpu": 1}),
+        tune.with_resources(trainable, resources={"cpu": 16, "gpu": 1}),
         tune_config=tune.TuneConfig(
             num_samples=tune_args["trial_num_samples"],
             search_alg=search_alg,
