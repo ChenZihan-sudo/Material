@@ -116,17 +116,17 @@ def start_training(model_name, dataset_name, args):
     result_path = create_result_folder(osp.join(train_args["save_result_on"], model_name))
 
     test_best_loss = None
-    epoch = None
-    model_object = {
-        "epoch": None,
-        "loss": None,
-        "model": None,
-        "model_state_dict": None,
-        "optimizer": None,
-        "optimizer_state_dict": None,
-        "scheduler": None,
-        "scheduler_state_dict": None,
-    }
+    # epoch = None
+    # model_object = {
+    #     "epoch": None,
+    #     "loss": None,
+    #     "model": None,
+    #     "model_state_dict": None,
+    #     "optimizer": None,
+    #     "optimizer_state_dict": None,
+    #     "scheduler": None,
+    #     "scheduler_state_dict": None,
+    # }
 
     # get best model based on best test loss
     save_best_model = train_args["save_best_model"]
@@ -140,12 +140,11 @@ def start_training(model_name, dataset_name, args):
         file.close()
 
     train_losses = []
-    test_losses = []
     val_losses = []
+    test_losses = []
 
     epochs = model_args["epochs"]
     pbar = tqdm(total=(epochs + 1))
-
     for epoch in range(1, epochs + 1):
 
         model, train_loss = train_step(model, train_loader, train_dataset, optimizer, device)

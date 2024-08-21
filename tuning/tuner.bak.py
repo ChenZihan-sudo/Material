@@ -31,8 +31,7 @@ def save_result_data(
     model,
     train_losses,
     val_losses,
-    test_losses,
-    test_eval_results,
+    val_eval_results,
     optimizer,
     scheduler,
     result_path,
@@ -42,7 +41,7 @@ def save_result_data(
     print(f"Epoch {epoch}: Saving data and model...")
     save_hyper_parameter(args, result_path)
     save_train_progress(epoch - 1, train_losses, val_losses, test_losses, result_path)
-    test_loss, test_out, test_y = test_eval_results
+    test_loss, test_out, test_y = val_eval_results
 
     # Reverse normalization of test_out and y
     min, max = get_data_scale(dataset_args["get_parameters_from"])
@@ -80,14 +79,12 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
     dataloader_args = tune_args["data_loader"]
     train_loader, val_loader, test_loader = make_data_loader(train_dataset, validation_dataset, test_dataset, **dataloader_args)
 
-    # print(f"dataset num, train:{len(train_dataset)}, val:{len(validation_dataset)}, test:{len(test_dataset)}")
-
     # get device
     device = get_device(args=args)
 
     # get model in dimension
     in_dim = train_dataset[0].x.shape[-1]
-    # print(f"model in_dim: {in_dim}")
+
     if model_name in ("PNA", "ChemGNN"):
         deg = generate_deg(train_dataset).float()
         deg = deg.to(device)
@@ -110,7 +107,7 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
     # create folder for recording results
     result_path = create_result_folder(osp.join(tune_args["save_result_on"], model_name))
 
-    test_best_loss = None
+    val_best_loss = None
 
     # get best model based on best test loss
     save_best_model = tune_args["save_best_model"]
@@ -125,33 +122,27 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
 
     train_losses = []
     val_losses = []
-    test_losses = []
 
     epochs = model_args["epochs"]
     pbar = tqdm(total=(epochs + 1))
     for epoch in range(1, epochs + 1):
 
         model, train_loss = train_step(model, train_loader, train_dataset, optimizer, device)
-        val_loss, _, _ = test_evaluations(model, val_loader, validation_dataset, device)
-        test_eval_results = test_evaluations(model, test_loader, test_dataset, device)
-        test_loss = test_eval_results[0]
+        val_eval_results = test_evaluations(model, val_loader, validation_dataset, device)
+        val_loss = val_eval_results[0]
 
         scheduler.step(val_loss)
         current_lr = optimizer.param_groups[0]["lr"]
 
         train_losses.append(train_loss)
         val_losses.append(val_loss)
-        test_losses.append(test_loss)
 
-        save_params = (
-            [args, dataset_args, epoch, model]
-            + [train_losses, val_losses, test_losses, test_eval_results]
-            + [optimizer, scheduler, result_path, model_name]
-        )
+        # save data and model parameters
+        save_params = [args, dataset_args, epoch, model, train_losses, val_losses, val_eval_results, optimizer, scheduler, result_path, model_name]
 
         # save best model
-        if test_best_loss is None or test_loss < test_best_loss:
-            test_best_loss = test_loss
+        if val_best_loss is None or val_loss < val_best_loss:
+            val_best_loss = val_loss
             if save_best_model:
                 save_result_data(*save_params)
 
@@ -164,18 +155,17 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
         train.report({"mean_absolute_error": val_loss}, checkpoint=checkpoint)
 
         # show messages
-        progress_msg = f"epoch:{str(epoch)} train:{str(round(train_loss,4))} valid:{str(round(val_loss, 4))} test:{str(round(test_loss, 4))} lr:{str(round(current_lr, 8))} best_test:{str(round(test_best_loss, 4))}"
+        progress_msg = f"epoch:{str(epoch)} train:{str(round(train_loss,4))} valid:{str(round(val_loss, 4))} lr:{str(round(current_lr, 8))}"
         pbar.set_description(progress_msg)
         pbar.update(1)
-    pbar.close()
 
 
 def start_tuning(model_name, dataset_name, args):
     tune_args = args["Tuning"]
     # print(tune_args)
 
-    ray.init(num_gpus=1, num_cpus=30)
-    # ray.init(**(tune_args["resources"]))
+    # ray.init(num_gpus=1, num_cpus=16)
+    ray.init(**(tune_args["resources"]))
 
     # hyperparameters = []
 
@@ -199,20 +189,14 @@ def start_tuning(model_name, dataset_name, args):
     dataset = make_dataset(dataset_name, args, **(tune_args["dataset"]))
     trainable = tune.with_parameters(trainable_model, dataset=dataset, model_name=model_name, dataset_name=dataset_name)
     tuner = tune.Tuner(
-        tune.with_resources(trainable, resources={"cpu": 30, "gpu": 1}),
+        tune.with_resources(trainable, resources={"cpu": tune_args["resources"]["num_cpus"], "gpu": tune_args["resources"]["num_cpus"]}),
         tune_config=tune.TuneConfig(
             num_samples=tune_args["trial_num_samples"],
             search_alg=search_alg,
             scheduler=scheduler,
             max_concurrent_trials=tune_args["max_concurrent_trials"],
         ),
-        run_config=train.RunConfig(
-            name=trial_name,
-            storage_path=storage_path,
-            progress_reporter=reporter,
-            log_to_file=log_to_file,
-            stop={"time_budget_s": 36000},
-        ),
+        run_config=train.RunConfig(name=trial_name, storage_path=storage_path, progress_reporter=reporter, log_to_file=log_to_file),
         param_space=args,
     )
 

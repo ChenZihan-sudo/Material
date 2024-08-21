@@ -17,4 +17,6 @@ results/GCN
 results/PNA
 results/tune
 
+*.out
+
 .ipynb_checkpoints/

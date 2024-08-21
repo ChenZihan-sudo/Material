@@ -27,6 +27,7 @@ class CEALConv(MessagePassing):
         post_layers=1,
         divide_input=False,
         aggMLP=False,
+        aggMLP_factor=0.5,
         **kwargs,
     ):
         """
@@ -104,7 +105,7 @@ class CEALConv(MessagePassing):
         self.lin = Linear(out_channels, out_channels)
 
         if self.aggMLP:
-            factor = 0.5
+            factor = aggMLP_factor
             self.mlp_w0 = Sequential(
                 torch.nn.Linear(self.F_in, round(self.F_in * factor)), ReLU(), torch.nn.Linear(round(self.F_in * factor), self.F_in)
             )

@@ -1,5 +1,5 @@
 Default:
-  absolute_work_dir: /home/catcolia/Desktop/Material
+  absolute_work_dir: /root/file/Material-v2/Material
   device: cuda
   result_path: results
   dataset_dir: dataset
@@ -8,10 +8,10 @@ Process:
   raw_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/raw"
   processed_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/processed"
   max_cutoff_distance: 8.0
-  max_cutoff_neighbors: 
+  max_cutoff_neighbors: 20
   edge:
     normalization: true
-    edge_feature: 10
+    edge_feature: 30
     gaussian_smearing:
       enable: true
       resolution: "{{Process.edge.edge_feature}}"
@@ -28,8 +28,8 @@ Training:
     testset_ratio: 0.1
     seed: 1
   data_loader:
-    batch_size: 500
-    num_workers: 2
+    batch_size: 800
+    num_workers: 4
     seed: 1
   save_best_model: true # get best model based on best test loss
   save_step: 2 # save results every save_step epochs
@@ -51,12 +51,19 @@ Tuning:
     num_workers: 1
     seed: 1
   trial_num_samples: 60
-  max_concurrent_trials: 1
+  max_concurrent_trials: 2
+  resources:
+    num_cpus: 30
+    num_gpus: 1
+  save_best_model: true # get best model based on best test loss
+  save_step: 2 # save results every save_step epochs
+  save_result_on: "{{Default.absolute_work_dir}}/{{Default.result_path}}"
+
 
 Dataset:
   MPDataset: # Material Project
     raw_dir: "{{Process.raw_dir}}/mp"
-    processed_dir: "{{Process.processed_dir}}/mp_neigbor_all_edge_10"
+    processed_dir: "{{Process.processed_dir}}/mp_neigbor_20_edge_30"
     api_key: j61NN3yuDh8tQWf0OrkachbbUoJ8npVP
     chunk_size: 1000
     num_chunks:
@@ -93,10 +100,11 @@ Models:
       post_layers: 1
       divide_input: false
       aggMLP: false
+      aggMLP_factor: 0.5
     pre_fc_dim: [100]
-    num_layers: 2
+    num_layers: 1
     conv_out_dim: 100
-    post_fc_dim: [150]
+    post_fc_dim: [150,100]
     dropout_rate: 0.0
     pool: "global_mean_pool"
     epochs: 1000

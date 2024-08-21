@@ -90,14 +90,12 @@ config = convert_str_to_number(config)
 
 
 # import training
-
 # training.start_training("ChemGNN", "MPDataset", config)
 
 # import process
 # process.MPDataset(config)
-# process.make_dataset("MPDataset", config, **(config["Training"]["dataset"]))
-
-
+# a, b, c = process.make_dataset("MPDataset", config, **(config["Training"]["dataset"]))
+# print(a[0].num_features)
 
 import tuning
 from tuning.prepare import make_tune_config
@@ -105,5 +103,3 @@ from tuning.prepare import make_tune_config
 tune_config = yaml_from_template(cmd_args.tune_config_path, recursive_render_time=0)
 config = make_tune_config(config, tune_config)
 tuning.start_tuning("ChemGNN", "MPDataset", config)
-
-

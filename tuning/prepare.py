@@ -6,7 +6,7 @@ custom_func = "fc_dim"
 
 
 def fc_dim(config):
-    res = {"num_layer": tune.qrandint(*config[0]), "dim": tune.qrandint(*config[1])}
+    res = {"num_layer": tune.choice(config[0]), "dim": tune.choice(config[1])}
     return res
 
 
