@@ -177,7 +177,7 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
         # report results to tay tune
         keep_best_epochs = epoch - best_loss_epoch
         # checkpoint = Checkpoint.from_directory(result_path)
-        train.report({"mean_absolute_error": val_loss, "keep_best_epochs": keep_best_epochs,"storage_path":result_path}, checkpoint=checkpoint)
+        train.report({"mean_absolute_error": best_loss, "keep_best_epochs": keep_best_epochs,"storage_path":result_path}, checkpoint=checkpoint)
         
         # stop condition
         if tune_args["keep_best_epochs"] <= keep_best_epochs:

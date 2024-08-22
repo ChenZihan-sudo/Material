@@ -15,7 +15,7 @@
 Tuning:
   data_loader:
     batch_size:
-      tune: [choice, [800]] # [qrandint, 600, 800, 100]
+      tune: [choice, [100,300,500]] # [qrandint, 600, 800, 100]
 
 Models:
   ChemGNN:
@@ -42,7 +42,7 @@ Models:
     pool:
       tune: [choice, ["global_mean_pool"]]
     epochs:
-      tune: [choice, [500]]
+      tune: [choice, [100]]
     learning_rate:
       tune: [loguniform, 0.001, 0.05]
     # optimizer:

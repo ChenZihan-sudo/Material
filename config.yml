@@ -51,8 +51,8 @@ Tuning:
     num_workers: 1
     seed: 1
   keep_best_epochs: 100
-  trial_num_samples: 1
-  max_concurrent_trials: 1
+  trial_num_samples: 2
+  max_concurrent_trials: 2
   time_budget_s: 43200
   resources:
     num_cpus: 30
