@@ -26,14 +26,16 @@ Models:
     #   pre_layers: 1
     #   post_layers: 1
     #   divide_input: false
-      aggMLP: [choice, [True, False]]
-      aggMLP_factor: [choice, [0.4, 0.6, 0.8, 1.0]]
+      aggMLP: 
+        tune: [choice, [True, False]]
+      aggMLP_factor: 
+        tune: [choice, [0.4, 0.6, 0.8, 1.0]]
     pre_fc_dim:
       tune: [fc_dim, [0, 1, 2, 3], [50, 100, 150, 200]] # choice, num_layers and dim
     num_layers:
       tune: [choice, [1, 2]]
     conv_out_dim:
-      tune: [choice, [50, 100, 150]]
+      tune: [choice, [100, 150]]
     post_fc_dim:
       tune: [fc_dim, [0, 1, 2, 3], [50, 100, 150, 200]] # choice, num_layers and dim
     # dropout_rate: 0.0
@@ -53,5 +55,5 @@ Models:
         factor: 
           tune: [choice, [0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9]]
         patience: 
-          tune: [choice, [5, 10, 15, 20, 25]]
+          tune: [choice, [5, 10, 15, 20]]
         # min_lr: 0.00000001

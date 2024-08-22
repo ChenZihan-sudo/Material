@@ -29,38 +29,38 @@ def save_result_data(
     dataset_args,
     epoch,
     model,
+    train_losses,
+    val_losses,
+    test_losses,
+    test_eval_results,
     optimizer,
     scheduler,
     result_path,
-    train_losses,
-    val_losses,
-    test_losses=None,
-    eval_results=None,
     regression_title="Model Regression",
 ):
     print("-------------------------------------------")
     print(f"Epoch {epoch}: Saving data and model...")
     save_hyper_parameter(args, result_path)
     save_train_progress(epoch - 1, train_losses, val_losses, test_losses, result_path)
-    _, out, y = eval_results
+    test_loss, test_out, test_y = test_eval_results
 
-    # Reverse normalization of out and y
+    # Reverse normalization of test_out and y
     min, max = get_data_scale(dataset_args["get_parameters_from"])
-    y = reverse_min_max_scalar_1d(y, min, max)
-    out = reverse_min_max_scalar_1d(out, min, max)
-    # loss = (out.squeeze() - y).abs().mean()
-    # print("MAE loss: ", loss.item())
+    test_y = reverse_min_max_scalar_1d(test_y, min, max)
+    test_out = reverse_min_max_scalar_1d(test_out, min, max)
+    loss = (test_out.squeeze() - test_y).abs().mean()
+    print("MAE loss: ", loss.item())
 
     # save results
     plot_training_progress(len(train_losses), train_losses, val_losses, test_losses, res_path=result_path, threshold=0.2)
-    save_regression_result(out, y, result_path)
-    mae = plot_regression_result(regression_title, result_path, plotfilename="regression_figure.jpeg")
+    save_regression_result(test_out, test_y, result_path)
+    plot_regression_result(regression_title, result_path, plotfilename="regression_figure.jpeg")
 
     # save model
-    save_model(result_path, model, epoch, mae, optimizer, scheduler)
+    save_model(result_path, model, epoch, loss, optimizer, scheduler)
     print("-------------------------------------------")
-    
-    return mae
+
+    return loss
 
 
 # def trainable_model(args, model_name=None, dataset_name=None):
@@ -110,13 +110,15 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
     # create folder for recording results
     result_path = create_result_folder(osp.join(tune_args["save_result_on"], model_name))
 
+    test_best_loss = None
+
     # get best model based on best test loss
     save_best_model = tune_args["save_best_model"]
     # save results every save_step epochs
     save_step = tune_args["save_step"]
 
     # model summary
-    # model_summary(model)
+    model_summary(model)
     with open(osp.join(result_path, "model_info.txt"), "w") as file:
         model_summary(model, file=file)
         file.close()
@@ -125,29 +127,14 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
     val_losses = []
     test_losses = []
 
-    best_loss = None
-    best_loss_epoch = None
-    keep_best_epochs = 0
-
     epochs = model_args["epochs"]
     pbar = tqdm(total=(epochs + 1))
     for epoch in range(1, epochs + 1):
 
-        eval_results = None
-
         model, train_loss = train_step(model, train_loader, train_dataset, optimizer, device)
-        val_eval_results = test_evaluations(model, val_loader, validation_dataset, device)
-        eval_results = val_eval_results
-        val_loss = val_eval_results[0]
-
-        eval_loss = val_loss
-        
-        test_loss = 0.0
-        if epoch == epochs - 1:
-            test_eval_results = test_evaluations(model, test_loader, test_dataset, device)
-            eval_results = test_eval_results
-            test_loss = test_eval_results[0]
-            eval_loss = test_loss
+        val_loss, _, _ = test_evaluations(model, val_loader, validation_dataset, device)
+        test_eval_results = test_evaluations(model, test_loader, test_dataset, device)
+        test_loss = test_eval_results[0]
 
         scheduler.step(val_loss)
         current_lr = optimizer.param_groups[0]["lr"]
@@ -158,33 +145,26 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
 
         save_params = (
             [args, dataset_args, epoch, model]
-            + [optimizer, scheduler, result_path]
-            + [train_losses, val_losses, test_losses, eval_results,model_name]
+            + [train_losses, val_losses, test_losses, test_eval_results]
+            + [optimizer, scheduler, result_path, model_name]
         )
 
         # save best model
-        checkpoint = None
-        if best_loss is None or eval_loss < best_loss:
-            best_loss = eval_loss
-            best_loss_epoch = epoch
+        if test_best_loss is None or test_loss < test_best_loss:
+            test_best_loss = test_loss
             if save_best_model:
                 save_result_data(*save_params)
-        
+
         # save results every save_step epochs
         if save_best_model is False and epoch % save_step == 0:
             save_result_data(*save_params)
 
         # report results to tay tune
-        keep_best_epochs = epoch - best_loss_epoch
-        # checkpoint = Checkpoint.from_directory(result_path)
-        train.report({"mean_absolute_error": val_loss, "keep_best_epochs": keep_best_epochs,"storage_path":result_path}, checkpoint=checkpoint)
-        
-        # stop condition
-        if tune_args["keep_best_epochs"] <= keep_best_epochs:
-            break
+        checkpoint = Checkpoint.from_directory(result_path)
+        train.report({"mean_absolute_error": val_loss}, checkpoint=checkpoint)
 
         # show messages
-        progress_msg = f"epoch:{str(epoch)} train:{str(round(train_loss,4))} valid:{str(round(val_loss, 4))} test:{"-" if test_loss==0.0 else str(round(test_loss, 4))} lr:{str(round(current_lr, 8))} eval_best:{str(round(best_loss, 4))}"
+        progress_msg = f"epoch:{str(epoch)} train:{str(round(train_loss,4))} valid:{str(round(val_loss, 4))} test:{str(round(test_loss, 4))} lr:{str(round(current_lr, 8))} best_test:{str(round(test_best_loss, 4))}"
         pbar.set_description(progress_msg)
         pbar.update(1)
     pbar.close()
@@ -192,15 +172,19 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
 
 def start_tuning(model_name, dataset_name, args):
     tune_args = args["Tuning"]
-    
-    tune_resources = tune_args["resources"]
-    ray.init(num_cpus=tune_resources["num_cpus"],num_gpus=tune_resources["num_gpus"])
+
+    ray.init(num_gpus=1, num_cpus=30)
+    # ray.init(**(tune_args["resources"]))
+
+    # hyperparameters = []
 
     search_alg = HyperOptSearch(metric="mean_absolute_error", mode="min")
     # search_alg = ConcurrencyLimiter(search_alg, max_concurrent=2)
 
-    scheduler = ASHAScheduler(metric="mean_absolute_error", mode="min", max_t=10000)
+    scheduler = ASHAScheduler(metric="mean_absolute_error", mode="min")
 
+    # parameter_columns = [hyperparameter for hyperparameter in hyperparameters.keys()]
+    # reporter = tune.CLIReporter(max_progress_rows=30, metric_columns=["mean_absolute_error"], parameter_columns=parameter_columns)
     reporter = tune.CLIReporter(max_progress_rows=100, metric_columns=["mean_absolute_error"])
 
     trial_name = f"{model_name}_{dataset_name}_{get_current_time()}"
@@ -214,20 +198,18 @@ def start_tuning(model_name, dataset_name, args):
     dataset = make_dataset(dataset_name, args, **(tune_args["dataset"]))
     trainable = tune.with_parameters(trainable_model, dataset=dataset, model_name=model_name, dataset_name=dataset_name)
     tuner = tune.Tuner(
-        tune.with_resources(trainable, resources={"cpu": tune_resources["trial_cpus"], "gpu": tune_resources["trial_gpus"]}),
+        tune.with_resources(trainable, resources={"cpu": 30, "gpu": 1}),
         tune_config=tune.TuneConfig(
             num_samples=tune_args["trial_num_samples"],
             search_alg=search_alg,
             scheduler=scheduler,
             max_concurrent_trials=tune_args["max_concurrent_trials"],
-            time_budget_s=tune_args["time_budget_s"]
         ),
         run_config=train.RunConfig(
             name=trial_name,
             storage_path=storage_path,
             progress_reporter=reporter,
             log_to_file=log_to_file,
-            # checkpoint_config=train.CheckpointConfig(checkpoint_at_end=True),
         ),
         param_space=args,
     )

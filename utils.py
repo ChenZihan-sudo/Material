@@ -26,7 +26,7 @@ def plot_training_progress(
     epoch,
     train_losses,
     val_losses,
-    test_losses,
+    test_losses=None,  # Make test_losses optional
     title="Loss vs. Epoch during Training",
     res_path=None,
     filename="train_progress.jpeg",
@@ -37,7 +37,7 @@ def plot_training_progress(
     plt.figure(figsize=(8, 6))
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
-    plt.title("Loss vs. Epoch during Training")
+    plt.title(title)
     plt.grid(True)
 
     lw = 0.7  # linewidth
@@ -48,28 +48,30 @@ def plot_training_progress(
             train_losses[i] = threshold
         if val_losses[i] > threshold:
             val_losses[i] = threshold
-        if test_losses[i] > threshold:
+        if test_losses and test_losses[i] > threshold:  # Only apply threshold if test_losses is provided
             test_losses[i] = threshold
 
     plt.plot(range(1, epoch + 1, 1), train_losses, marker="o", linestyle="-", color="b", lw=lw, ms=ms)
     plt.plot(range(1, epoch + 1, 1), val_losses, marker="s", linestyle="-", color="r", lw=lw, ms=ms)
-    plt.plot(range(1, epoch + 1, 1), test_losses, marker="*", linestyle="-", color="g", lw=lw, ms=ms)
 
     legend_entries = [
         Line2D([0], [0], color="blue", label="train_loss (Blue)"),
         Line2D([0], [0], color="red", label="validate_loss (Red)"),
-        Line2D([0], [0], color="green", label="test_loss (Green)"),
     ]
-    plt.title(title)
+
+    if test_losses:  # Plot test_losses only if it is provided
+        plt.plot(range(1, epoch + 1, 1), test_losses, marker="*", linestyle="-", color="g", lw=lw, ms=ms)
+        legend_entries.append(Line2D([0], [0], color="green", label="test_loss (Green)"))
 
     plt.legend(handles=legend_entries, loc="upper right")
 
-    # save the train graph
+    # Save the train graph
     filename = osp.join(res_path, filename)
     plt.savefig(filename)
 
     plt.pause(0.001)
     plt.close()
+
 
 
 # Save hyper parameters
@@ -208,6 +210,7 @@ def plot_regression_result(title, res_path, filename="regression_result.txt", pl
 
     # Calculate R^2
     r2 = calculate_r_squared(y, x)
+    print("R^2= ", r2)
 
     density = get_density(x, y)
     max_d = round(np.max(density))
@@ -255,6 +258,8 @@ def plot_regression_result(title, res_path, filename="regression_result.txt", pl
         plt.show()
     else:
         plt.close()
+        
+    return mae
 
 
 # R^2 of predicted vs true values
