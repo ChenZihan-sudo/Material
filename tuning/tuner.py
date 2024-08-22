@@ -117,9 +117,9 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
 
     # model summary
     # model_summary(model)
-    with open(osp.join(result_path, "model_info.txt"), "w") as file:
-        model_summary(model, file=file)
-        file.close()
+    # with open(osp.join(result_path, "model_info.txt"), "w") as file:
+    #     model_summary(model, file=file)
+    #     file.close()
 
     train_losses = []
     val_losses = []
@@ -129,7 +129,7 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
     best_loss_epoch = None
     keep_best_epochs = 0
 
-    epochs = model_args["epochs"]
+    epochs = tune_args["max_epochs"]
     pbar = tqdm(total=(epochs + 1))
     for epoch in range(1, epochs + 1):
 
@@ -167,7 +167,7 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
         if best_loss is None or eval_loss < best_loss:
             best_loss = eval_loss
             best_loss_epoch = epoch
-            if save_best_model:
+            if save_best_model and tune_args["save_loss_limit"] <= best_loss:
                 save_result_data(*save_params)
         
         # save results every save_step epochs

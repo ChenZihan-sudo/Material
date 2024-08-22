@@ -1,7 +1,7 @@
 Default:
   absolute_work_dir: /root/file/Material-v2/Material
   device: cuda
-  result_path: results
+  result_path: tune_results
   dataset_dir: dataset
 
 Process:
@@ -36,7 +36,7 @@ Training:
   save_result_on: "{{Default.absolute_work_dir}}/{{Default.result_path}}"
 
 Tuning:
-  storage_path: "{{Default.absolute_work_dir}}/results/tune"
+  storage_path: "{{Default.absolute_work_dir}}/{{Default.result_path}}/tune"
   log_to_file: true # log trainable output
   model:
     name: ChemGNN
@@ -47,22 +47,23 @@ Tuning:
     testset_ratio: 0.1
     seed: 1
   data_loader:
-    batch_size:
+    batch_size: 100
     num_workers: 1
     seed: 1
   keep_best_epochs: 100
-  trial_num_samples: 2
-  max_concurrent_trials: 2
+  save_loss_limit: 0.011
+  trial_num_samples: 1000
+  max_concurrent_trials: 4
+  max_epochs: 100
   time_budget_s: 43200
   resources:
     num_cpus: 30
     num_gpus: 1
-    trial_cpus: 15
-    trial_gpus: 0.5
+    trial_cpus: 7.25
+    trial_gpus: 0.25
   save_best_model: true # get best model based on best test loss
-  save_step: 2 # save results every save_step epochs
+  save_step: 50 # save results every save_step epochs if save_best_model is false
   save_result_on: "{{Default.absolute_work_dir}}/{{Default.result_path}}"
-
 
 Dataset:
   MPDataset: # Material Project
