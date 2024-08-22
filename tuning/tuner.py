@@ -167,7 +167,7 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
         if best_loss is None or eval_loss < best_loss:
             best_loss = eval_loss
             best_loss_epoch = epoch
-            if save_best_model and tune_args["save_loss_limit"] <= best_loss:
+            if save_best_model and tune_args["save_loss_limit"] >= best_loss:
                 save_result_data(*save_params)
         
         # save results every save_step epochs

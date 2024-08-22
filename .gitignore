@@ -17,8 +17,7 @@ results/GCN
 results/PNA
 results/tune
 
-tune_results/ChemGNN
-tune_results/tune
+tune_results/
 
 *.out
 
