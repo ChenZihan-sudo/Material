@@ -9,6 +9,7 @@ v1/
 
 /*.ipynb
 /*.py
+/*.csv
 !main.py
 !utils.py
 

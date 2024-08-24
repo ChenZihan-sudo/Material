@@ -59,7 +59,7 @@ def save_result_data(
     # save model
     save_model(result_path, model, epoch, mae, optimizer, scheduler)
     print("-------------------------------------------")
-    
+
     return mae
 
 
@@ -68,7 +68,6 @@ def save_result_data(
 
 def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
     print(f"############ Start Hyperparameter Tuning on {model_name} with {dataset_name} ############")
-    # print("Hyperparameters: ", args)
 
     tune_args = args["Tuning"]
     dataset_args = args["Dataset"][dataset_name]
@@ -112,8 +111,8 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
 
     # get best model based on best test loss
     save_best_model = tune_args["save_best_model"]
-    # save results every save_step epochs
-    save_step = tune_args["save_step"]
+    # # save results every save_step epochs
+    # save_step = tune_args["save_step"]
 
     # model summary
     # model_summary(model)
@@ -141,7 +140,7 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
         val_loss = val_eval_results[0]
 
         eval_loss = val_loss
-        
+
         test_loss = 0.0
         if epoch == epochs - 1:
             test_eval_results = test_evaluations(model, test_loader, test_dataset, device)
@@ -159,7 +158,7 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
         save_params = (
             [args, dataset_args, epoch, model]
             + [optimizer, scheduler, result_path]
-            + [train_losses, val_losses, test_losses, eval_results,model_name]
+            + [train_losses, val_losses, test_losses, eval_results, model_name]
         )
 
         # save best model
@@ -169,22 +168,22 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
             best_loss_epoch = epoch
             if save_best_model and tune_args["save_loss_limit"] >= best_loss:
                 save_result_data(*save_params)
-        
-        # save results every save_step epochs
-        if save_best_model is False and epoch % save_step == 0:
-            save_result_data(*save_params)
+
+        # # save results every save_step epochs
+        # if save_best_model is False and epoch % save_step == 0:
+        #     save_result_data(*save_params)
 
         # report results to tay tune
         keep_best_epochs = epoch - best_loss_epoch
         # checkpoint = Checkpoint.from_directory(result_path)
-        train.report({"mean_absolute_error": best_loss, "keep_best_epochs": keep_best_epochs,"storage_path":result_path}, checkpoint=checkpoint)
-        
+        train.report({"mean_absolute_error": best_loss, "keep_best_epochs": keep_best_epochs, "storage_path": result_path}, checkpoint=checkpoint)
+
         # stop condition
         if tune_args["keep_best_epochs"] <= keep_best_epochs:
             break
 
         # show messages
-        progress_msg = f"epoch:{str(epoch)} train:{str(round(train_loss,4))} valid:{str(round(val_loss, 4))} test:{"-" if test_loss==0.0 else str(round(test_loss, 4))} lr:{str(round(current_lr, 8))} eval_best:{str(round(best_loss, 4))}"
+        progress_msg = f"epoch:{str(epoch)} train:{str(round(train_loss,4))} valid:{str(round(val_loss, 4))} test:{'-' if test_loss==0.0 else str(round(test_loss, 4))} lr:{str(round(current_lr, 8))} eval_best:{str(round(best_loss, 4))}"
         pbar.set_description(progress_msg)
         pbar.update(1)
     pbar.close()
@@ -192,9 +191,9 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
 
 def start_tuning(model_name, dataset_name, args):
     tune_args = args["Tuning"]
-    
+
     tune_resources = tune_args["resources"]
-    ray.init(num_cpus=tune_resources["num_cpus"],num_gpus=tune_resources["num_gpus"])
+    ray.init(num_cpus=tune_resources["num_cpus"], num_gpus=tune_resources["num_gpus"])
 
     search_alg = HyperOptSearch(metric="mean_absolute_error", mode="min")
     # search_alg = ConcurrencyLimiter(search_alg, max_concurrent=2)
@@ -220,7 +219,7 @@ def start_tuning(model_name, dataset_name, args):
             search_alg=search_alg,
             scheduler=scheduler,
             max_concurrent_trials=tune_args["max_concurrent_trials"],
-            time_budget_s=tune_args["time_budget_s"]
+            time_budget_s=tune_args["time_budget_s"],
         ),
         run_config=train.RunConfig(
             name=trial_name,
