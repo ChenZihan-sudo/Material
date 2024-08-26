@@ -18,7 +18,7 @@ results/GCN
 results/PNA
 results/tune
 
-tune_results/
+tune_results*/
 
 *.out
 

@@ -66,71 +66,117 @@ def save_result_data(
 # def trainable_model(args, model_name=None, dataset_name=None):
 
 
-def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
+def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset_name=None):
+
     print(f"############ Start Hyperparameter Tuning on {model_name} with {dataset_name} ############")
+
+    # Tuning will inherit from current config file
+    load_args["Tuning"] = args["Tuning"]
+    load_args["Dataset"] = args["Dataset"]
+
+    if "restore_experiment_from" in args["Tuning"]:
+        from ray.train.context import TrainContext
+
+        content = TrainContext().get_storage()
+        trial_path = osp.join(args["Tuning"]["restore_experiment_from"], content.trial_dir_name)
+
+        load_path = None
+        progress_path = osp.join(trial_path, "progress.csv")
+        if osp.exists(progress_path):  # restore training data
+            # progress.csv file exist with model data path
+            with open(progress_path, mode="r") as file:
+                reader = csv.DictReader(file)
+                for row in reader:
+                    load_path = row["storage_path"]
+                    break
+            print("restore: get load model data path ", load_path)
+            print(f"############ Resume Tuning on {model_name} with {dataset_name} ############")
+
+    args = load_args
 
     tune_args = args["Tuning"]
     dataset_args = args["Dataset"][dataset_name]
     model_args = args["Models"][model_name]
 
+    tune_args["load_dataset_by_trainable"] = False  #! debugging: remove this line
     # make dataset and data loader
-    # train_dataset, validation_dataset, test_dataset = make_dataset(dataset_name, args, **(tune_args["dataset"]))
-    train_dataset, validation_dataset, test_dataset = dataset
+    if tune_args["load_dataset_by_trainable"]:
+        train_dataset, validation_dataset, test_dataset = make_dataset(dataset_name, args, **(tune_args["dataset"]))
+    else:
+        train_dataset, validation_dataset, test_dataset = dataset
     dataloader_args = tune_args["data_loader"]
     train_loader, val_loader, test_loader = make_data_loader(train_dataset, validation_dataset, test_dataset, **dataloader_args)
 
+    # print("hyperparameters: ", args)
     # print(f"dataset num, train:{len(train_dataset)}, val:{len(validation_dataset)}, test:{len(test_dataset)}")
 
     # get device
     device = get_device(args=args)
 
-    # get model in dimension
-    in_dim = train_dataset[0].x.shape[-1]
-    # print(f"model in_dim: {in_dim}")
-    if model_name in ("PNA", "ChemGNN"):
-        deg = generate_deg(train_dataset).float()
-        deg = deg.to(device)
-        model = getattr(models, model_name)(deg, in_dim, **model_args)
+    if load_path:
+        checkpoint = torch.load(osp.join(load_path, "checkpoint.pt"))
+        model = checkpoint["model"]
+        model.load_state_dict(checkpoint["model_state_dict"])
         model = model.to(device)
     else:
-        model = getattr(models, model_name)(in_dim, **model_args)
-        model = model.to(device)
+        # get model in dimension
+        in_dim = train_dataset[0].x.shape[-1]
+        # print(f"model in_dim: {in_dim}")
+        if model_name in ("PNA", "ChemGNN"):
+            deg = generate_deg(train_dataset).float()
+            deg = deg.to(device)
+            model = getattr(models, model_name)(deg, in_dim, **model_args)
+            model = model.to(device)
+        else:
+            model = getattr(models, model_name)(in_dim, **model_args)
+            model = model.to(device)
 
     # set optimizer
-    optimizer_args = model_args["optimizer"]
-    optimizer_params = optimizer_args["params"] if optimizer_args["params"] is not None else {}
-    optimizer = getattr(torch.optim, optimizer_args["name"])(model.parameters(), lr=model_args["learning_rate"], **optimizer_params)
+    if load_path:
+        optimizer = checkpoint["optimizer"]
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    else:
+        optimizer_args = model_args["optimizer"]
+        optimizer_params = optimizer_args["params"] if optimizer_args["params"] is not None else {}
+        optimizer = getattr(torch.optim, optimizer_args["name"])(model.parameters(), lr=model_args["learning_rate"], **optimizer_params)
 
     # set scheduler
-    scheduler_args = model_args["scheduler"]
-    scheduler_params = scheduler_args["params"] if scheduler_args["params"] is not None else {}
-    scheduler = getattr(torch.optim.lr_scheduler, scheduler_args["name"])(optimizer, **scheduler_params)
+    if load_path:
+        scheduler = checkpoint["scheduler"]
+        scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+    else:
+        scheduler_args = model_args["scheduler"]
+        scheduler_params = scheduler_args["params"] if scheduler_args["params"] is not None else {}
+        scheduler = getattr(torch.optim.lr_scheduler, scheduler_args["name"])(optimizer, **scheduler_params)
 
     # create folder for recording results
-    result_path = create_result_folder(osp.join(tune_args["save_result_on"], model_name))
-
-    # get best model based on best test loss
-    save_best_model = tune_args["save_best_model"]
-    # # save results every save_step epochs
-    # save_step = tune_args["save_step"]
-
-    # model summary
-    # model_summary(model)
-    # with open(osp.join(result_path, "model_info.txt"), "w") as file:
-    #     model_summary(model, file=file)
-    #     file.close()
-
-    train_losses = []
-    val_losses = []
-    test_losses = []
+    if load_path:
+        result_path = load_path
+    else:
+        result_path = create_result_folder(osp.join(tune_args["save_result_on"], model_name))
 
     best_loss = None
     best_loss_epoch = None
     keep_best_epochs = 0
 
+    epoch = 0 if load_path is None else checkpoint["epoch"]
     epochs = tune_args["max_epochs"]
     pbar = tqdm(total=(epochs + 1))
-    for epoch in range(1, epochs + 1):
+    pbar.update(epoch)
+
+    train_losses = []
+    val_losses = []
+    test_losses = []
+
+    if load_path:
+        with open(osp.join(load_path, "train_progress.csv"), mode="r") as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                train_losses.append(float(row["train_losses"]))
+                val_losses.append(float(row["val_losses"]))
+                test_losses.append(float(row["test_losses"]))
+
+    for epoch in range(epoch, epochs + 1):
 
         eval_results = None
 
@@ -162,21 +208,19 @@ def trainable_model(args, dataset=None, model_name=None, dataset_name=None):
         )
 
         # save best model
-        checkpoint = None
+        # checkpoint = None
         if best_loss is None or eval_loss < best_loss:
             best_loss = eval_loss
             best_loss_epoch = epoch
-            if save_best_model and tune_args["save_loss_limit"] >= best_loss:
+            # save condition
+            if tune_args["save_loss_limit"] >= best_loss:
+                print("save result data")
                 save_result_data(*save_params)
-
-        # # save results every save_step epochs
-        # if save_best_model is False and epoch % save_step == 0:
-        #     save_result_data(*save_params)
 
         # report results to tay tune
         keep_best_epochs = epoch - best_loss_epoch
         # checkpoint = Checkpoint.from_directory(result_path)
-        train.report({"mean_absolute_error": best_loss, "keep_best_epochs": keep_best_epochs, "storage_path": result_path}, checkpoint=checkpoint)
+        train.report({"mean_absolute_error": best_loss, "keep_best_epochs": keep_best_epochs, "storage_path": result_path}, checkpoint=None)
 
         # stop condition
         if tune_args["keep_best_epochs"] <= keep_best_epochs:
@@ -210,28 +254,41 @@ def start_tuning(model_name, dataset_name, args):
     # trainable = partial(trainable_model, model_name=model_name, dataset_name=dataset_name)
 
     # create dataset in here
-    dataset = make_dataset(dataset_name, args, **(tune_args["dataset"]))
-    trainable = tune.with_parameters(trainable_model, dataset=dataset, model_name=model_name, dataset_name=dataset_name)
-    tuner = tune.Tuner(
-        tune.with_resources(trainable, resources={"cpu": tune_resources["trial_cpus"], "gpu": tune_resources["trial_gpus"]}),
-        tune_config=tune.TuneConfig(
-            num_samples=tune_args["trial_num_samples"],
-            search_alg=search_alg,
-            scheduler=scheduler,
-            max_concurrent_trials=tune_args["max_concurrent_trials"],
-            time_budget_s=tune_args["time_budget_s"],
-        ),
-        run_config=train.RunConfig(
-            name=trial_name,
-            storage_path=storage_path,
-            progress_reporter=reporter,
-            log_to_file=log_to_file,
-            # checkpoint_config=train.CheckpointConfig(checkpoint_at_end=True),
-        ),
-        param_space=args,
-    )
+    dataset = make_dataset(dataset_name, args, **(tune_args["dataset"])) if tune_args["load_dataset_by_trainable"] is False else None
+    trainable = tune.with_parameters(trainable_model, args=args, dataset=dataset, model_name=model_name, dataset_name=dataset_name)
+
+    # new tuner
+    if tune_args["restore_experiment_from"] is None:
+        tuner = tune.Tuner(
+            tune.with_resources(trainable, resources={"cpu": tune_resources["trial_cpus"], "gpu": tune_resources["trial_gpus"]}),
+            tune_config=tune.TuneConfig(
+                num_samples=tune_args["trial_num_samples"],
+                search_alg=search_alg,
+                scheduler=scheduler,
+                max_concurrent_trials=tune_args["max_concurrent_trials"],
+                time_budget_s=tune_args["time_budget_s"],
+            ),
+            run_config=train.RunConfig(
+                name=trial_name,
+                storage_path=storage_path,
+                progress_reporter=reporter,
+                log_to_file=log_to_file,
+                failure_config=train.FailureConfig(max_failures=3),
+                # checkpoint_config=train.CheckpointConfig(checkpoint_at_end=True),
+            ),
+            param_space=args,
+        )
+    # restore tuner
+    else:
+        tuner = tune.Tuner.restore(
+            tune_args["restore_experiment_from"],
+            tune.with_resources(trainable, resources={"cpu": tune_resources["trial_cpus"], "gpu": tune_resources["trial_gpus"]}),
+            resume_unfinished=True,
+            resume_errored=False,
+            restart_errored=False,
+        )
 
     results = tuner.fit()
-    best_result = results.get_best_result("mean_absolute_error", mode="min")
-    print("best_result", best_result)
-    print("hyperparameters: ", best_result.config)
+    # best_result = results.get_best_result("mean_absolute_error", mode="min")
+    # print("best_result", best_result)
+    # print("hyperparameters: ", best_result.config)

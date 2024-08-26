@@ -139,11 +139,6 @@ def start_training(model_name, dataset_name, args):
     else:
         result_path = create_result_folder(osp.join(train_args["save_result_on"], model_name))
 
-    # get best model based on best test loss
-    save_best_model = train_args["save_best_model"]
-    # # save results every save_step epochs
-    # save_step = train_args["save_step"]
-
     model_summary(model)
     with open(osp.join(result_path, "model_info.txt"), "w") as file:
         model_summary(model, file=file)
@@ -151,11 +146,10 @@ def start_training(model_name, dataset_name, args):
 
     best_loss = None
 
-    epoch = checkpoint["epoch"]
+    epoch = 0 if load_path is None else checkpoint["epoch"]
     epochs = train_args["epochs"]
     pbar = tqdm(total=(epochs + 1))
     pbar.update(epoch)
-    print("epoch:", epoch)
 
     train_losses = []
     val_losses = []
@@ -205,12 +199,7 @@ def start_training(model_name, dataset_name, args):
         # save best model
         if best_loss is None or eval_loss < best_loss:
             best_loss = eval_loss
-            if save_best_model:
-                save_result_data(*save_params)
-
-        # # save results every save_step epochs
-        # if save_best_model is False and epoch % save_step == 0:
-        #     save_result_data(*save_params)
+            save_result_data(*save_params)
 
         progress_msg = f"epoch:{str(epoch)} train:{str(round(train_loss,4))} valid:{str(round(val_loss, 4))} test:{'-' if test_loss==0.0 else str(round(test_loss, 4))} lr:{str(round(current_lr, 8))} eval_best:{str(round(best_loss, 4))}"
         pbar.set_description(progress_msg)

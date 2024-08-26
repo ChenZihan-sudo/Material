@@ -1,9 +1,11 @@
 Default:
-  absolute_work_dir: /home/catcolia/Desktop/Material
+  absolute_work_dir: /home/catcolia/Material
   device: cuda
   result_path: results
+  tune_result_path: tune_results
   dataset_dir: dataset
 
+# Task
 Process:
   raw_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/raw"
   processed_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/processed"
@@ -18,6 +20,7 @@ Process:
       width: 0.2
   process: MPDataset
 
+# Task
 Training:
   model: ChemGNN
   epochs: 1000
@@ -35,11 +38,13 @@ Training:
   # save_step: 2 # save results every save_step epochs
   save_result_on: "{{Default.absolute_work_dir}}/{{Default.result_path}}"
   # load model from a checkpoint file, empty (blank) here will train from begin
-  load_model_from: "{{Default.absolute_work_dir}}/results/ChemGNN/1724537109002412"
-  resume_training: true # resume training will cover the original checkpoint file
+  load_model_from: # "{{Default.absolute_work_dir}}/results/ChemGNN/1724537109002412"
+  # resume training will restore all status and cover the original checkpoint file
+  resume_training: true
 
+# Task
 Tuning:
-  storage_path: "{{Default.absolute_work_dir}}/{{Default.result_path}}/tune"
+  storage_path: "{{Default.absolute_work_dir}}/{{Default.tune_result_path}}/tune"
   log_to_file: true # log trainable output
   model: ChemGNN
   dataset:
@@ -52,23 +57,27 @@ Tuning:
     batch_size: 100
     num_workers: 1
     seed: 1
-  save_loss_limit: 0.011 # data will start saving if model reaches this loss value
-  trial_num_samples: 1000
-  max_concurrent_trials: 4
+  save_loss_limit: 1.0 # data will start saving if the model loss reaches this value
+  trial_num_samples: 1
+  max_concurrent_trials: 1
   max_epochs: 150
   time_budget_s: 43200 # the whole experiment will stop in time_budget_s seconds
   resources:
-    num_cpus: 16 # total hardware cpu resources
+    num_cpus: 16 # total hardware cpu(thread) resources
     num_gpus: 1 # total hardware gpu resources
     trial_cpus: 8 # a trail uses cpus=num_cpus/trial_cpus if paralleled
     trial_gpus: 0.5 # a trial uses gpus=num_gpus/trial_gpus if paralleled
-  save_best_model: true # get best model based on best test loss
-  # the trial will end if the best model does not appear after the `keep_best_epochs` epochs, start counting when the best model appears.
+  # the trial will end if the best model does not appear after the `keep_best_epochs` epochs,
+  # resetting the counter to 0 when the best model appears.
   keep_best_epochs: 100
-  # save_step: 50 # save results every save_step epochs if save_best_model is false
-  save_result_on: "{{Default.absolute_work_dir}}/{{Default.result_path}}"
-  # restore experiment from a experiment, empty (blank) here will train from begin
-  restore_experiment_from:
+  save_result_on: "{{Default.absolute_work_dir}}/{{Default.tune_result_path}}"
+  # restore experiment from a experiment path, empty (blank) here will start training from begin
+  restore_experiment_from: "{{Tuning.storage_path}}/ChemGNN_MPDataset_2024-08-22_15-35-48"
+  # load dataset by trainable model method, produce the dataset processed data if need
+  load_dataset_by_trainable: false
+
+# Task
+# Analysis:
 
 Dataset:
   MPDataset: # Material Project

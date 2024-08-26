@@ -27,6 +27,12 @@ parser.add_argument(
     help="Location of tune config file (default: tuning/tune_config.yml)",
 )
 
+parser.add_argument("-M", "--model", default="ChemGNN", type=str, help="", required=False)
+parser.add_argument("-D", "--dataset", default="MPDataset", type=str, help="", required=False)
+
+# Process, Training, Tuning, Analysis
+parser.add_argument("-T", "--task", default="Training", type=str, help="", required=True)
+
 # Get arguments from command line
 cmd_args = parser.parse_args(sys.argv[1:])
 
@@ -64,17 +70,23 @@ config = yaml_from_template(cmd_args.config_path, recursive_render_time=10)
 config = convert_str_to_number(config)
 
 # training
-import training
-training.start_training("ChemGNN", "MPDataset", config)
+if cmd_args.task == "Training":
+    import training
 
-# make dataset
-# import process
-# process.MPDataset(config)
+    training.start_training("ChemGNN", "MPDataset", config)
+
+# process dataset
+if cmd_args.task == "Process":
+    import process
+
+    process.MPDataset(config)
 
 # tuning
-# import tuning
-# from tuning.prepare import make_tune_config
+if cmd_args.task == "Tuning":
+    import tuning
+    from tuning.prepare import make_tune_config
 
-# tune_config = yaml_from_template(cmd_args.tune_config_path, recursive_render_time=0)
-# config = make_tune_config(config, tune_config)
-# tuning.start_tuning("ChemGNN", "MPDataset", config)
+    tune_config = yaml_from_template(cmd_args.tune_config_path, recursive_render_time=0)
+    config = make_tune_config(config, tune_config)
+    # print(config)
+    tuning.start_tuning("ChemGNN", "MPDataset", config)
