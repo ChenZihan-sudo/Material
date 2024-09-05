@@ -76,12 +76,14 @@ if cmd_args.task == "Training":
 
     training.start_training("ChemGNN", "MPDataset", config)
 
-# process dataset
+# process dataset manually
 if cmd_args.task == "Process":
     import process
 
     # process.MPDataset(config)
-    process.MPDatasetLarge(config)
+
+    process.make_dataset("MPDataset", config, 0.1, 0.1, 0.8, 1)
+    # process.MPDatasetLarge(config)
 
 # tuning
 if cmd_args.task == "Tuning":

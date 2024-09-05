@@ -9,8 +9,6 @@ __all__ = [
     "HypoDataset",
     "OptimizedHypoDataset",
     "make_dataset",
-    "normalization_1d",
-    "reverse_normalization_1d",
 ]
 
 
@@ -24,9 +22,22 @@ def random_split_dataset(dataset, lengths=None, seed=None):
     return train_dataset, validation_dataset, test_dataset
 
 
-def make_dataset(dataset_name, args, trainset_ratio=None, valset_ratio=None, testset_ratio=None, seed=None, **kwargs):
+# make processed file name
+def make_processed_filename(dataset_name: str, args: dict):
+    p = args["Process"]
+    name_prefix = args["Dataset"][dataset_name]["processed_dir"]
+    name_postfix = f"cut_{str(p["max_cutoff_distance"])}_efeat_{str(p["edge"]["edge_feature"])}_gwid_{str(p["edge"]["gaussian_smearing"]["width"])}"
+    args["Dataset"][dataset_name]["processed_dir"] = name_prefix+"_"+name_postfix
+    print("Processed path: ",args["Dataset"][dataset_name]["processed_dir"])
+    return args
+
+
+def make_dataset(dataset_name: str, args: dict, trainset_ratio=None, valset_ratio=None, testset_ratio=None, seed=None, **kwargs):
     # assert len(lengths) > 0 or (args is not None and seed is not None), "Provide split ratio(lengths) or config dict(args)"
     import sys
+
+    if args["Process"]["auto_processed_name"] is True:
+        args = make_processed_filename(dataset_name, args)
 
     dataset = getattr(sys.modules[__name__], dataset_name)(args)
     lengths = [trainset_ratio, valset_ratio, testset_ratio]

@@ -9,16 +9,18 @@ Default:
 Process:
   raw_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/raw"
   processed_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/processed"
-  max_cutoff_distance: 8.0
+  max_cutoff_distance: 1.0
   max_cutoff_neighbors: 
   edge:
     normalization: true
-    edge_feature: 30
+    edge_feature: 10
     gaussian_smearing:
       enable: true
-      resolution: "{{Process.edge.edge_feature}}"
+      # resolution: "{{Process.edge.edge_feature}}" # deprecated
       width: 0.2
   process: MPDataset
+  auto_processed_name: true
+  auto_delete: true
 
 # Task
 Training:
@@ -82,7 +84,7 @@ Tuning:
 Dataset:
   MPDataset: # Material Project
     raw_dir: "{{Process.raw_dir}}/mp"
-    processed_dir: "{{Process.processed_dir}}/mp_neigbor_20_edge_30"
+    processed_dir: "{{Process.processed_dir}}/mp"
     api_key: j61NN3yuDh8tQWf0OrkachbbUoJ8npVP
     chunk_size: 1000
     num_chunks:
@@ -118,7 +120,7 @@ Models:
     conv_params:
       aggregators: [sum, mean, min, max, std]
       scalers: [identity]
-      edge_dim: "{{Process.edge.edge_feature}}"
+      # edge_dim: "{{Process.edge.edge_feature}}" # deprecated, use Process.edge.edge_feature instead
       towers: 1
       pre_layers: 1
       post_layers: 1
@@ -146,7 +148,7 @@ Models:
     conv_params:
       aggregators: [sum, mean, min, max, std]
       scalers: [identity, amplification, attenuation]
-      edge_dim: "{{Process.edge.edge_feature}}"
+      # edge_dim: "{{Process.edge.edge_feature}}" # deprecated, use Process.edge.edge_feature instead
       towers: 1
       pre_layers: 1
       post_layers: 1

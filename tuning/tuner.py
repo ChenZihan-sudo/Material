@@ -67,13 +67,20 @@ def save_result_data(
 
 
 def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset_name=None):
-
+    """
+    Params:
+        - load_args: original arguments when restore the trial
+        - args: current arguments file
+    """
     print(f"############ Start Hyperparameter Tuning on {model_name} with {dataset_name} ############")
 
-    # Tuning will inherit from current config file
+    # Tuning will inherit from current config file here to avoid problem about the absolute work dir
+    tune_batch_size = load_args["Tuning"]["data_loader"]["batch_size"]  # batch_size is a tune argument and will not be changed.
     load_args["Tuning"] = args["Tuning"]
+    load_args["Tuning"]["data_loader"]["batch_size"] = tune_batch_size
     load_args["Dataset"] = args["Dataset"]
-
+    load_args["Process"] = args["Process"]
+    
     load_path = None
     if "restore_experiment_from" in args["Tuning"]:
         if args["Tuning"]["restore_experiment_from"] is not None:
@@ -125,6 +132,7 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
         in_dim = train_dataset[0].x.shape[-1]
         # print(f"model in_dim: {in_dim}")
         if model_name in ("PNA", "ChemGNN"):
+            model_args["conv_params"]["edge_dim"] = args["Process"]["edge"]["edge_feature"] # import edge_dim from Process.edge.edge_feature
             deg = generate_deg(train_dataset).float()
             deg = deg.to(device)
             model = getattr(models, model_name)(deg, in_dim, **model_args)

@@ -192,6 +192,7 @@ def raw_data_process(args, onehot_gen=False, onehot_range: list = None) -> list:
             data.edge_weight, _, _ = normalization_1d(data.edge_weight, 0.0, max_cutoff_distance, 0.0, 1.0)
     # edge gaussian smearing
     if edge_args["gaussian_smearing"]["enable"] is True:
+        edge_args["gaussian_smearing"]["resolution"] = edge_args["edge_feature"]
         for i, data in enumerate(data_list):
             data.edge_attr = gaussian_smearing(0.0, 1.0, data.edge_weight, **edge_args["gaussian_smearing"])
     else:

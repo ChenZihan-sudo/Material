@@ -109,6 +109,7 @@ def start_training(model_name, dataset_name, args):
         print(f"model in_dim: {in_dim}")
 
         if model_name in ("PNA", "ChemGNN"):
+            model_args["conv_params"]["edge_dim"] = args["Process"]["edge"]["edge_feature"] # import edge_dim from Process.edge.edge_feature
             deg = generate_deg(train_dataset).float()
             deg = deg.to(device)
             model = getattr(models, model_name)(deg, in_dim, **model_args)
