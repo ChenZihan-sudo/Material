@@ -10,7 +10,7 @@ Process:
   raw_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/raw"
   processed_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/processed"
   max_cutoff_distance: 8.0
-  max_cutoff_neighbors: 20
+  max_cutoff_neighbors: 
   edge:
     normalization: true
     edge_feature: 30
@@ -58,21 +58,21 @@ Tuning:
     num_workers: 1
     seed: 1
   save_loss_limit: 1.0 # data will start saving if the model loss reaches this value
-  trial_num_samples: 1
-  max_concurrent_trials: 1
-  max_epochs: 150
-  time_budget_s: 43200 # the whole experiment will stop in time_budget_s seconds
+  trial_num_samples: 100000000000
+  max_concurrent_trials: 2
+  max_epochs: 350
+  time_budget_s: # the whole experiment will stop in time_budget_s seconds
   resources:
     num_cpus: 16 # total hardware cpu(thread) resources
     num_gpus: 1 # total hardware gpu resources
-    trial_cpus: 8 # a trail uses cpus=num_cpus/trial_cpus if paralleled
-    trial_gpus: 0.5 # a trial uses gpus=num_gpus/trial_gpus if paralleled
+    trial_cpus: 16 # a trail uses cpus=num_cpus/trial_cpus if paralleled
+    trial_gpus: 1 # a trial uses gpus=num_gpus/trial_gpus if paralleled
   # the trial will end if the best model does not appear after the `keep_best_epochs` epochs,
   # resetting the counter to 0 when the best model appears.
   keep_best_epochs: 100
   save_result_on: "{{Default.absolute_work_dir}}/{{Default.tune_result_path}}"
   # restore experiment from a experiment path, empty (blank) here will start training from begin
-  restore_experiment_from: "{{Tuning.storage_path}}/ChemGNN_MPDataset_2024-08-22_15-35-48"
+  restore_experiment_from: "{{Tuning.storage_path}}/ChemGNN_MPDataset_2024-08-27_09-53-22"
   # load dataset by trainable model method, produce the dataset processed data if need
   load_dataset_by_trainable: false
 
@@ -89,6 +89,11 @@ Dataset:
     keep_data_from: "{{Dataset.MPDataset.raw_dir}}/origin_INDICES" # keep the data sorting from the INDICES file
     onehot_gen: false
     onehot_range: [1, 101]
+    get_parameters_from: "{{Dataset.MPDataset.processed_dir}}"
+  MPDatasetLarge:
+    processed_filename: CONFIG
+    total_data_num: 41819
+    processed_dir: "{{Process.processed_dir}}/mpl_neigbor_20_edge_30"
     get_parameters_from: "{{Dataset.MPDataset.processed_dir}}"
   HypoDataset: # Unoptimized Hypothesis Compounds
     processed_dir: "{{Process.processed_dir}}/hypo"

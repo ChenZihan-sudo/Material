@@ -11,6 +11,7 @@ import yaml
 
 # import models
 import process
+import process.MPDatasetLarge
 
 parser = argparse.ArgumentParser(description="")
 parser.add_argument(
@@ -79,7 +80,8 @@ if cmd_args.task == "Training":
 if cmd_args.task == "Process":
     import process
 
-    process.MPDataset(config)
+    # process.MPDataset(config)
+    process.MPDatasetLarge(config)
 
 # tuning
 if cmd_args.task == "Tuning":

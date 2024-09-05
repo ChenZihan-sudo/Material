@@ -74,23 +74,25 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
     load_args["Tuning"] = args["Tuning"]
     load_args["Dataset"] = args["Dataset"]
 
+    load_path = None
     if "restore_experiment_from" in args["Tuning"]:
-        from ray.train.context import TrainContext
+        if args["Tuning"]["restore_experiment_from"] is not None:
 
-        content = TrainContext().get_storage()
-        trial_path = osp.join(args["Tuning"]["restore_experiment_from"], content.trial_dir_name)
+            from ray.train.context import TrainContext
 
-        load_path = None
-        progress_path = osp.join(trial_path, "progress.csv")
-        if osp.exists(progress_path):  # restore training data
-            # progress.csv file exist with model data path
-            with open(progress_path, mode="r") as file:
-                reader = csv.DictReader(file)
-                for row in reader:
-                    load_path = row["storage_path"]
-                    break
-            print("restore: get load model data path ", load_path)
-            print(f"############ Resume Tuning on {model_name} with {dataset_name} ############")
+            content = TrainContext().get_storage()
+            trial_path = osp.join(args["Tuning"]["restore_experiment_from"], content.trial_dir_name)
+
+            progress_path = osp.join(trial_path, "progress.csv")
+            if osp.exists(progress_path):  # restore training data
+                # progress.csv file exist with model data path
+                with open(progress_path, mode="r") as file:
+                    reader = csv.DictReader(file)
+                    for row in reader:
+                        load_path = row["storage_path"]
+                        break
+                print("restore: get load model data path ", load_path)
+                print(f"############ Resume Tuning on {model_name} with {dataset_name} ############")
 
     args = load_args
 
@@ -113,7 +115,7 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
     # get device
     device = get_device(args=args)
 
-    if load_path:
+    if load_path is not None:
         checkpoint = torch.load(osp.join(load_path, "checkpoint.pt"))
         model = checkpoint["model"]
         model.load_state_dict(checkpoint["model_state_dict"])
@@ -132,7 +134,7 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
             model = model.to(device)
 
     # set optimizer
-    if load_path:
+    if load_path is not None:
         optimizer = checkpoint["optimizer"]
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
     else:
@@ -141,7 +143,7 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
         optimizer = getattr(torch.optim, optimizer_args["name"])(model.parameters(), lr=model_args["learning_rate"], **optimizer_params)
 
     # set scheduler
-    if load_path:
+    if load_path is not None:
         scheduler = checkpoint["scheduler"]
         scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
     else:
@@ -150,7 +152,7 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
         scheduler = getattr(torch.optim.lr_scheduler, scheduler_args["name"])(optimizer, **scheduler_params)
 
     # create folder for recording results
-    if load_path:
+    if load_path is not None:
         result_path = load_path
     else:
         result_path = create_result_folder(osp.join(tune_args["save_result_on"], model_name))
@@ -168,7 +170,7 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
     val_losses = []
     test_losses = []
 
-    if load_path:
+    if load_path is not None:
         with open(osp.join(load_path, "train_progress.csv"), mode="r") as file:
             reader = csv.DictReader(file)
             for row in reader:
@@ -177,7 +179,6 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
                 test_losses.append(float(row["test_losses"]))
 
     for epoch in range(epoch, epochs + 1):
-
         eval_results = None
 
         model, train_loss = train_step(model, train_loader, train_dataset, optimizer, device)

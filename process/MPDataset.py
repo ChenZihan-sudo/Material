@@ -23,7 +23,13 @@ module_filename = __name__.split(".")[-1]
 
 
 # Download compounds raw data from the Material Project
-def download_raw_data(d_args, exclude_elements=["O"], num_elements=(3, 3), keep_data_from=None):
+def download_raw_data(
+    d_args,
+    exclude_elements=["O"],
+    num_elements=(3, 3),
+    keep_data_from=None,
+    # include_elements=["Ce", "Co", "Cu"],
+):
     """
     Args:
     - keep_data_from: filter compounds data and sort id from the file `INDICE`
@@ -40,6 +46,7 @@ def download_raw_data(d_args, exclude_elements=["O"], num_elements=(3, 3), keep_
     raw_datasets = mpr.materials.summary.search(
         fields=["material_id", "formation_energy_per_atom", "structure"],
         exclude_elements=exclude_elements,
+        # include_elements=include_elements,
         num_elements=num_elements,
         chunk_size=d_args["chunk_size"],
         num_chunks=d_args["num_chunks"],

@@ -1,9 +1,11 @@
 from .MPDataset import MPDataset
 from .HypoDataset import HypoDataset
 from .OptimizedHypoDataset import OptimizedHypoDataset
+from .MPDatasetLarge import MPDatasetLarge
 
 __all__ = [
     "MPDataset",
+    "MPDatasetLarge",
     "HypoDataset",
     "OptimizedHypoDataset",
     "make_dataset",

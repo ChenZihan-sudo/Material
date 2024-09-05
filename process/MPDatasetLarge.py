@@ -24,19 +24,18 @@ module_filename = __name__.split(".")[-1]
 
 
 # The Material Project Dataset
-class MPDataset(Dataset):
+class MPDatasetLarge(Dataset):
     def __init__(self, args, transform=None, pre_transform=None, pre_filter=None):
         self.args = args
-        self.d_args = args["Dataset"][module_filename]
+        self.l_args = args["Dataset"][module_filename]
+        self.d_args = args["Dataset"]["MPDataset"]
         super().__init__(args["Default"]["dataset_dir"], transform, pre_transform, pre_filter)
-
-        path = osp.join(self.processed_dir, "data.pt")
-        self.load(path)
 
     # Skip process if file exist
     @property
     def processed_file_names(self) -> list[str]:
-        return ["data.pt"]
+        file_names = f"{self.l_args['processed_filename']}_{str(self.l_args["total_data_num"])}.pt"
+        return file_names
 
     # Get all filenames from {DATASET_MP_RAW_DIR}/INDICES, skip download if those files exist
     @property
@@ -58,7 +57,7 @@ class MPDataset(Dataset):
 
     @property
     def processed_dir(self) -> str:
-        return self.d_args["processed_dir"]
+        return self.l_args["processed_dir"]
 
     def download(self):
         print("Downloading raw dataset...")
@@ -67,7 +66,16 @@ class MPDataset(Dataset):
 
     def process(self):
         data_list = raw_data_process(self.args, onehot_gen=self.d_args["onehot_gen"], onehot_range=self.d_args["onehot_range"])
-        self.data = data_list
 
-        path = osp.join(self.processed_dir, "data.pt")
-        self.save(data_list, path)
+        print("saving processed data...")
+        for i, data in enumerate(data_list):
+            filename = f"{self.l_args['processed_filename']}_{i+1}.pt"
+            path = osp.join(self.processed_dir, filename)
+            torch.save(data, path)
+
+    def len(self):
+        return self.l_args["total_data_num"]
+
+    def get(self, idx):
+        data = torch.load(osp.join(self.processed_dir, f"{self.l_args['processed_filename']}_{idx+1}.pt"))
+        return data
