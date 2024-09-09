@@ -15,10 +15,11 @@
 Process:
   max_cutoff_distance:
     tune: [choice, [3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]]
-    # tune: [choice, [3.0]]
+    # tune: [choice, [1.0]]
   edge:
     edge_feature:
       tune: [choice, [20, 30, 40, 50, 60]]
+      # tune: [choice, [20]]
     gaussian_smearing:
       width:
         tune: [choice, [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35]]

@@ -258,7 +258,7 @@ def plot_regression_result(title, res_path, filename="regression_result.txt", pl
     else:
         plt.close()
 
-    return mae
+    return mae, r2
 
 
 # R^2 of predicted vs true values

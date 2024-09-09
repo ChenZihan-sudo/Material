@@ -55,18 +55,16 @@ def save_result_data(
     # save results
     plot_training_progress(len(train_losses), train_losses, val_losses, test_losses, res_path=result_path, threshold=0.2)
     save_regression_result(out, y, result_path)
-    mae = plot_regression_result(regression_title, result_path, plotfilename="regression_figure.jpeg")
+    mae, r2 = plot_regression_result(regression_title, result_path, plotfilename="regression_figure.jpeg")
 
     # save model
     save_model(result_path, model, epoch, mae, optimizer, scheduler)
     print("-------------------------------------------")
 
-    return mae
+    return mae, r2
 
 
 # def trainable_model(args, model_name=None, dataset_name=None):
-
-
 def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset_name=None):
     """
     Params:
@@ -206,7 +204,7 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
             eval_loss = val_loss
 
             test_loss = 0.0
-            if epoch == epochs - 1:
+            if epoch == epochs - 1 or tune_args["keep_best_epochs"] <= keep_best_epochs:
                 # get test loss
                 test_eval_results = test_evaluations(model, test_loader, test_dataset, device)
                 eval_results = test_eval_results
@@ -233,11 +231,14 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
                 # save condition
                 if tune_args["save_loss_limit"] >= best_loss:
                     print("save result data")
-                    save_result_data(*save_params)
+                    mae, r2 = save_result_data(*save_params)
 
             # report results to tay tune
             keep_best_epochs = epoch - best_loss_epoch
-            train.report({"mean_absolute_error": best_loss, "keep_best_epochs": keep_best_epochs, "storage_path": result_path}, checkpoint=None)
+            train.report(
+                {"mean_absolute_error": best_loss, "keep_best_epochs": keep_best_epochs, "storage_path": result_path, "mae": mae, "r2": r2},
+                checkpoint=None,
+            )
 
             # show messages
             progress_msg = f"epoch:{str(epoch)} train:{str(round(train_loss,4))} valid:{str(round(val_loss, 4))} test:{'-' if test_loss==0.0 else str(round(test_loss, 4))} lr:{str(round(current_lr, 8))} eval_best:{str(round(best_loss, 4))}"

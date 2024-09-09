@@ -190,8 +190,8 @@ def raw_data_process(args, onehot_gen=False, onehot_range: list = None) -> list:
                 for a in data.atomic_numbers:
                     atomic_number_set.add(a)
 
-            if i == 2000:
-                break
+            # if i == 2000:
+            #     break
             data_list.append(data)
             pbar.update(1)
         pbar.close()

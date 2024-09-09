@@ -61,7 +61,7 @@ Tuning:
 
   data_loader:
     batch_size: 100
-    num_workers: 2
+    num_workers: 1
     seed: 1
 
   # data will start saving if the model loss reaches this value
