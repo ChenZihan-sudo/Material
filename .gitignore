@@ -19,6 +19,7 @@ results/PNA
 results/tune
 
 tune_results*/
+legacy*/
 
 *.out
 

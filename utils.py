@@ -73,7 +73,6 @@ def plot_training_progress(
     plt.close()
 
 
-
 # Save hyper parameters
 def save_hyper_parameter(hyper_dict, result_path, hyper_para_filename="hyperparameters.json"):
     # The hyper parameters are saved in a .json file
@@ -258,7 +257,7 @@ def plot_regression_result(title, res_path, filename="regression_result.txt", pl
         plt.show()
     else:
         plt.close()
-        
+
     return mae
 
 
@@ -340,7 +339,7 @@ def edge_weight_to_edge_attr(data):
 
 # resolution: steps, one-dimensional tensor of size steps whose values are evenly spaced from start to end
 # width: standard variance in gaussian function
-def gaussian_smearing(start, stop, dist, resolution=None, width=None, **args):
+def gaussian_smearing(start, stop, dist, resolution=None, width=None, **kwargs):
     offset = torch.linspace(start, stop, resolution)
     coeff = -0.5 / ((stop - start) * width) ** 2
     dist = dist.unsqueeze(-1) - offset.view(1, -1)

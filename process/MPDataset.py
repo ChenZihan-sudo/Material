@@ -92,7 +92,7 @@ def raw_data_preprocess(dest_dir, raw_datasets):
 
 
 # Process one compound data
-def read_one_compound_info(args, compound_data, max_cutoff_distance, max_cutoff_neighbors=None) -> Data:
+def read_one_compound_info(args, compound_data, max_cutoff_distance, max_cutoff_neighbors=None, ase_atom=None) -> Data:
     d_args = args["Dataset"][module_filename]
 
     data = Data()
@@ -101,8 +101,11 @@ def read_one_compound_info(args, compound_data, max_cutoff_distance, max_cutoff_
     data.mid = mid
     data.idx = idx
 
-    filename = osp.join("{}".format(d_args["raw_dir"]), "CONFIG_" + idx + ".poscar")
-    compound = ase_read(filename, format="vasp")
+    if ase_atom is None:
+        filename = osp.join("{}".format(d_args["raw_dir"]), "CONFIG_" + idx + ".poscar")
+        compound = ase_read(filename, format="vasp")
+    else:
+        compound = ase_atom
 
     # get distance matrix
     distance_matrix = compound.get_all_distances(mic=True)
@@ -152,10 +155,9 @@ def raw_data_process(args, onehot_gen=False, onehot_range: list = None) -> list:
         indices = [row for row in reader][1:]  # ignore first line of header
 
     # process progress bar
-    pbar = tqdm(total=len(indices))
+    pbar = tqdm(total=len(indices), mininterval=10)
     pbar.set_description("dataset processing")
 
-    # Process single graph
     data_list = []
     atomic_number_set = set()
 
@@ -163,16 +165,49 @@ def raw_data_process(args, onehot_gen=False, onehot_range: list = None) -> list:
     max_cutoff_distance = p_args["max_cutoff_distance"]
     max_cutoff_neighbors = p_args["max_cutoff_neighbors"]
 
-    for i, d in enumerate(indices):
-        # d: one item in indices (e.g. i=0, d=['1', 'mp-861724', '-0.41328523750000556'])
-        data = read_one_compound_info(args, d, max_cutoff_distance, max_cutoff_neighbors)
+    # read raw data from ase atoms raw data
+    if p_args["use_ase_atoms_raw_data"] is True:
+        ase_atoms_list = []
+        save_path = osp.join("{}".format(d_args["raw_dir"]), "ase_atoms_data.pt")
 
-        if onehot_gen is True:
-            for a in data.atomic_numbers:
-                atomic_number_set.add(a)
-        data_list.append(data)
-        pbar.update(1)
-    pbar.close()
+        if not osp.exists(save_path):
+            print("Processing raw files to the ase atoms block file...")
+            for i, d in enumerate(indices):
+                idx, mid, y = d
+                filename = osp.join("{}".format(d_args["raw_dir"]), f"CONFIG_{idx}.poscar")
+                compound = ase_read(filename, format="vasp")
+                ase_atoms_list.append(compound)
+
+            torch.save(ase_atoms_list, save_path)
+        else:
+            ase_atoms_list = torch.load(save_path)
+
+        for i, d, ase_atom in zip(range(len(indices)), indices, ase_atoms_list):
+            # d: one item in indices (e.g. i=0, d=['1', 'mp-861724', '-0.41328523750000556'])
+            data = read_one_compound_info(args, d, max_cutoff_distance, max_cutoff_neighbors, ase_atom)
+
+            if onehot_gen is True:
+                for a in data.atomic_numbers:
+                    atomic_number_set.add(a)
+
+            if i == 2000:
+                break
+            data_list.append(data)
+            pbar.update(1)
+        pbar.close()
+
+    else:  # else read raw data from the single file
+        for i, d in enumerate(indices):
+            # d: one item in indices (e.g. i=0, d=['1', 'mp-861724', '-0.41328523750000556'])
+            data = read_one_compound_info(args, d, max_cutoff_distance, max_cutoff_neighbors)
+
+            if onehot_gen is True:
+                for a in data.atomic_numbers:
+                    atomic_number_set.add(a)
+
+            data_list.append(data)
+            pbar.update(1)
+        pbar.close()
 
     # Create one hot for data.x
     print("process one hot for nodes...")

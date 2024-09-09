@@ -1,4 +1,5 @@
 import torch
+import traceback
 import matplotlib.pyplot as plt
 
 import os.path as osp
@@ -8,7 +9,7 @@ from training.prepare import *
 
 from models import *
 from utils import *
-from process import make_dataset
+from process import make_dataset, delete_processed_data
 
 import ray
 from ray import tune, train
@@ -79,12 +80,12 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
     load_args["Tuning"] = args["Tuning"]
     load_args["Tuning"]["data_loader"]["batch_size"] = tune_batch_size
     load_args["Dataset"] = args["Dataset"]
-    load_args["Process"] = args["Process"]
-    
+
+    # load_args["Process"] = args["Process"]
+
     load_path = None
     if "restore_experiment_from" in args["Tuning"]:
         if args["Tuning"]["restore_experiment_from"] is not None:
-
             from ray.train.context import TrainContext
 
             content = TrainContext().get_storage()
@@ -107,12 +108,19 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
     dataset_args = args["Dataset"][dataset_name]
     model_args = args["Models"][model_name]
 
-    tune_args["load_dataset_by_trainable"] = False  #! debugging: remove this line
+    # tune_args["load_dataset_by_trainable"] = False  # debugging: remove this line
     # make dataset and data loader
     if tune_args["load_dataset_by_trainable"]:
-        train_dataset, validation_dataset, test_dataset = make_dataset(dataset_name, args, **(tune_args["dataset"]))
-    else:
-        train_dataset, validation_dataset, test_dataset = dataset
+        train_dataset, validation_dataset, test_dataset, processed_data_path = make_dataset(dataset_name, args, **(tune_args["dataset"]))
+    else:  # use the dataset passed from start_tuning method
+        train_dataset, validation_dataset, test_dataset, processed_data_path = dataset
+
+    # sync the processed data path
+    if args["Process"]["auto_processed_name"] is True:
+        args["Dataset"][dataset_name]["processed_dir"] = processed_data_path
+        dataset_args["processed_dir"] = processed_data_path
+        dataset_args["get_parameters_from"] = dataset_args["processed_dir"]
+
     dataloader_args = tune_args["data_loader"]
     train_loader, val_loader, test_loader = make_data_loader(train_dataset, validation_dataset, test_dataset, **dataloader_args)
 
@@ -132,7 +140,7 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
         in_dim = train_dataset[0].x.shape[-1]
         # print(f"model in_dim: {in_dim}")
         if model_name in ("PNA", "ChemGNN"):
-            model_args["conv_params"]["edge_dim"] = args["Process"]["edge"]["edge_feature"] # import edge_dim from Process.edge.edge_feature
+            model_args["conv_params"]["edge_dim"] = args["Process"]["edge"]["edge_feature"]  # import edge_dim from Process.edge.edge_feature
             deg = generate_deg(train_dataset).float()
             deg = deg.to(device)
             model = getattr(models, model_name)(deg, in_dim, **model_args)
@@ -171,7 +179,7 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
 
     epoch = 0 if load_path is None else checkpoint["epoch"]
     epochs = tune_args["max_epochs"]
-    pbar = tqdm(total=(epochs + 1))
+    pbar = tqdm(total=(epochs + 1), mininterval=10)
     pbar.update(epoch)
 
     train_losses = []
@@ -187,59 +195,72 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
                 test_losses.append(float(row["test_losses"]))
 
     for epoch in range(epoch, epochs + 1):
-        eval_results = None
+        try:
+            eval_results = None
 
-        model, train_loss = train_step(model, train_loader, train_dataset, optimizer, device)
-        val_eval_results = test_evaluations(model, val_loader, validation_dataset, device)
-        eval_results = val_eval_results
-        val_loss = val_eval_results[0]
+            model, train_loss = train_step(model, train_loader, train_dataset, optimizer, device)
+            val_eval_results = test_evaluations(model, val_loader, validation_dataset, device)
+            eval_results = val_eval_results
+            val_loss = val_eval_results[0]
 
-        eval_loss = val_loss
+            eval_loss = val_loss
 
-        test_loss = 0.0
-        if epoch == epochs - 1:
-            test_eval_results = test_evaluations(model, test_loader, test_dataset, device)
-            eval_results = test_eval_results
-            test_loss = test_eval_results[0]
-            eval_loss = test_loss
+            test_loss = 0.0
+            if epoch == epochs - 1:
+                # get test loss
+                test_eval_results = test_evaluations(model, test_loader, test_dataset, device)
+                eval_results = test_eval_results
+                test_loss = test_eval_results[0]
+                eval_loss = test_loss
 
-        scheduler.step(val_loss)
-        current_lr = optimizer.param_groups[0]["lr"]
+            scheduler.step(val_loss)
+            current_lr = optimizer.param_groups[0]["lr"]
 
-        train_losses.append(train_loss)
-        val_losses.append(val_loss)
-        test_losses.append(test_loss)
+            train_losses.append(train_loss)
+            val_losses.append(val_loss)
+            test_losses.append(test_loss)
 
-        save_params = (
-            [args, dataset_args, epoch, model]
-            + [optimizer, scheduler, result_path]
-            + [train_losses, val_losses, test_losses, eval_results, model_name]
-        )
+            save_params = (
+                [args, dataset_args, epoch, model]
+                + [optimizer, scheduler, result_path]
+                + [train_losses, val_losses, test_losses, eval_results, model_name]
+            )
 
-        # save best model
-        # checkpoint = None
-        if best_loss is None or eval_loss < best_loss:
-            best_loss = eval_loss
-            best_loss_epoch = epoch
-            # save condition
-            if tune_args["save_loss_limit"] >= best_loss:
-                print("save result data")
-                save_result_data(*save_params)
+            # save best model
+            if best_loss is None or eval_loss < best_loss:
+                best_loss = eval_loss
+                best_loss_epoch = epoch
+                # save condition
+                if tune_args["save_loss_limit"] >= best_loss:
+                    print("save result data")
+                    save_result_data(*save_params)
 
-        # report results to tay tune
-        keep_best_epochs = epoch - best_loss_epoch
-        # checkpoint = Checkpoint.from_directory(result_path)
-        train.report({"mean_absolute_error": best_loss, "keep_best_epochs": keep_best_epochs, "storage_path": result_path}, checkpoint=None)
+            # report results to tay tune
+            keep_best_epochs = epoch - best_loss_epoch
+            train.report({"mean_absolute_error": best_loss, "keep_best_epochs": keep_best_epochs, "storage_path": result_path}, checkpoint=None)
 
-        # stop condition
-        if tune_args["keep_best_epochs"] <= keep_best_epochs:
-            break
+            # show messages
+            progress_msg = f"epoch:{str(epoch)} train:{str(round(train_loss,4))} valid:{str(round(val_loss, 4))} test:{'-' if test_loss==0.0 else str(round(test_loss, 4))} lr:{str(round(current_lr, 8))} eval_best:{str(round(best_loss, 4))}"
+            pbar.set_description(progress_msg)
+            pbar.update(1)
 
-        # show messages
-        progress_msg = f"epoch:{str(epoch)} train:{str(round(train_loss,4))} valid:{str(round(val_loss, 4))} test:{'-' if test_loss==0.0 else str(round(test_loss, 4))} lr:{str(round(current_lr, 8))} eval_best:{str(round(best_loss, 4))}"
-        pbar.set_description(progress_msg)
-        pbar.update(1)
+            # stop conditions
+            # 1. reach last epoch
+            if epoch == epochs - 1:
+                print("training complete.")
+            # 2. reach keep_best_epochs
+            if tune_args["keep_best_epochs"] <= keep_best_epochs:
+                print("training complete.")
+                break
+        except Exception as e:
+            # delete all processed data
+            delete_processed_data(processed_data_path)
+            traceback.print_exc()
+            raise RuntimeError(f"error during training, error msg: {e}")
     pbar.close()
+
+    # delete all processed data
+    delete_processed_data(processed_data_path)
 
 
 def start_tuning(model_name, dataset_name, args):
@@ -251,7 +272,8 @@ def start_tuning(model_name, dataset_name, args):
     search_alg = HyperOptSearch(metric="mean_absolute_error", mode="min")
     # search_alg = ConcurrencyLimiter(search_alg, max_concurrent=2)
 
-    scheduler = ASHAScheduler(metric="mean_absolute_error", mode="min", max_t=10000)
+    scheduler = None
+    # scheduler = ASHAScheduler(metric="mean_absolute_error", mode="min", max_t=10000)
 
     reporter = tune.CLIReporter(max_progress_rows=100, metric_columns=["mean_absolute_error"])
 
@@ -298,6 +320,6 @@ def start_tuning(model_name, dataset_name, args):
         )
 
     results = tuner.fit()
-    # best_result = results.get_best_result("mean_absolute_error", mode="min")
-    # print("best_result", best_result)
-    # print("hyperparameters: ", best_result.config)
+    best_result = results.get_best_result("mean_absolute_error", mode="min")
+    print("best_result", best_result)
+    print("hyperparameters: ", best_result.config)

@@ -8,9 +8,10 @@ Default:
 # Task
 Process:
   raw_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/raw"
+  use_ase_atoms_raw_data: true
   processed_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/processed"
-  max_cutoff_distance: 1.0
-  max_cutoff_neighbors: 
+  max_cutoff_distance: 0.4
+  max_cutoff_neighbors:
   edge:
     normalization: true
     edge_feature: 10
@@ -19,8 +20,8 @@ Process:
       # resolution: "{{Process.edge.edge_feature}}" # deprecated
       width: 0.2
   process: MPDataset
+  # auto generate processed dataset name
   auto_processed_name: true
-  auto_delete: true
 
 # Task
 Training:
@@ -47,7 +48,7 @@ Training:
 # Task
 Tuning:
   storage_path: "{{Default.absolute_work_dir}}/{{Default.tune_result_path}}/tune"
-  log_to_file: true # log trainable output
+  log_to_file: true # set true will enable the log trainable output
   model: ChemGNN
   dataset:
     name: MPDataset # MPDataset;HypothesisDataset;OptimizedHypoDataset
@@ -55,28 +56,45 @@ Tuning:
     valset_ratio: 0.1
     testset_ratio: 0.1
     seed: 1
+    # delete processed dataset after end of final epoch or reach `keep_best_epochs`
+    delete_after_completion: true
+
   data_loader:
     batch_size: 100
-    num_workers: 1
+    num_workers: 2
     seed: 1
-  save_loss_limit: 1.0 # data will start saving if the model loss reaches this value
-  trial_num_samples: 100000000000
-  max_concurrent_trials: 2
-  max_epochs: 350
-  time_budget_s: # the whole experiment will stop in time_budget_s seconds
+
+  # data will start saving if the model loss reaches this value
+  save_loss_limit: 1.0 
+  # the maximum trials (how many trials the experiment can sample)
+  # If this is -1, (virtually) infinite samples are generated until a stopping condition is met.
+  trial_num_samples: -1
+  # a training task (a trial) will run less or equal to the `max_epochs` epochs
+  max_epochs: 1000 # 1000
+  # the whole experiment will stop after `time_budget_s` seconds 
+  time_budget_s: 
+
+  # max concurrent trials if paralleled, 
+  # set this according to your task and hardware resources
+  max_concurrent_trials: 1
   resources:
     num_cpus: 16 # total hardware cpu(thread) resources
     num_gpus: 1 # total hardware gpu resources
-    trial_cpus: 16 # a trail uses cpus=num_cpus/trial_cpus if paralleled
-    trial_gpus: 1 # a trial uses gpus=num_gpus/trial_gpus if paralleled
+    trial_cpus: 16 # a trail uses trial_cpus=num_cpus/concurrent_trials if paralleled
+    trial_gpus: 1 # a trial uses trial_gpus=num_gpus/concurrent_trials if paralleled
+
   # the trial will end if the best model does not appear after the `keep_best_epochs` epochs,
-  # resetting the counter to 0 when the best model appears.
+  # the counter will reset to 0 when the best model appears
+  # every epoch keep_best_epochs + 1 if the best model does not appear.
   keep_best_epochs: 100
   save_result_on: "{{Default.absolute_work_dir}}/{{Default.tune_result_path}}"
+
+  # set true will load or process dataset from trainable model method
+  load_dataset_by_trainable: true
+  
   # restore experiment from a experiment path, empty (blank) here will start training from begin
-  restore_experiment_from: "{{Tuning.storage_path}}/ChemGNN_MPDataset_2024-08-27_09-53-22"
-  # load dataset by trainable model method, produce the dataset processed data if need
-  load_dataset_by_trainable: false
+  restore_experiment_from: # "{{Tuning.storage_path}}/ChemGNN_MPDataset_2024-09-09_19-03-43"
+
 
 # Task
 # Analysis:
@@ -95,7 +113,7 @@ Dataset:
   MPDatasetLarge:
     processed_filename: CONFIG
     total_data_num: 41819
-    processed_dir: "{{Process.processed_dir}}/mpl_neigbor_20_edge_30"
+    processed_dir: "{{Process.processed_dir}}/mpl"
     get_parameters_from: "{{Dataset.MPDataset.processed_dir}}"
   HypoDataset: # Unoptimized Hypothesis Compounds
     processed_dir: "{{Process.processed_dir}}/hypo"
