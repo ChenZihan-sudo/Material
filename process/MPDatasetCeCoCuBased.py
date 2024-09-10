@@ -59,7 +59,7 @@ def download_raw_data(
             )
             for data in datasets:
                 raw_datasets.append(data)
-
+        print("total before filtered: ", len(raw_datasets))
         # filter redundancy in the whole dataset
         raw_datasets_dict = {}
         for doc in raw_datasets:
@@ -69,6 +69,7 @@ def download_raw_data(
         for _, value in raw_datasets_dict.items():
             raw_datasets_set.append(value)
         raw_datasets = raw_datasets_set
+        print("total after filtered: ", len(raw_datasets))
     else:
         raw_datasets = mpr.materials.summary.search(
             fields=["material_id", "formation_energy_per_atom", "structure"],
@@ -216,8 +217,6 @@ def raw_data_process(args, onehot_gen=False, onehot_range: list = None) -> list:
                 for a in data.atomic_numbers:
                     atomic_number_set.add(a)
 
-            # if i == 2000:
-            #     break
             data_list.append(data)
             pbar.update(1)
         pbar.close()
@@ -282,7 +281,7 @@ def raw_data_process(args, onehot_gen=False, onehot_range: list = None) -> list:
 
 
 # The Material Project Dataset
-class MPDataset(InMemoryDataset):
+class MPDatasetCeCoCuBased(InMemoryDataset):
     def __init__(self, args, transform=None, pre_transform=None, pre_filter=None):
         self.args = args
         self.d_args = args["Dataset"][module_filename]

@@ -2,10 +2,12 @@ from .MPDataset import MPDataset
 from .HypoDataset import HypoDataset
 from .OptimizedHypoDataset import OptimizedHypoDataset
 from .MPDatasetLarge import MPDatasetLarge
+from .MPDatasetCeCoCuBased import MPDatasetCeCoCuBased
 
 __all__ = [
     "MPDataset",
     "MPDatasetLarge",
+    "MPDatasetCeCoCuBased",
     "HypoDataset",
     "OptimizedHypoDataset",
     "make_dataset",

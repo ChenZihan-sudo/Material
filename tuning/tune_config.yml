@@ -27,7 +27,7 @@ Process:
 Tuning:
   data_loader:
     batch_size:
-      tune: [choice, [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]] # [qrandint, 600, 800, 100]
+      tune: [choice, [100, 200, 300, 400, 500]] # [qrandint, 600, 800, 100]
       # tune: [choice, [100]] # [qrandint, 600, 800, 100]
 
 Models:

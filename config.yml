@@ -65,16 +65,16 @@ Tuning:
     seed: 1
 
   # data will start saving if the model loss reaches this value
-  save_loss_limit: 1.0 
+  save_loss_limit: 1.0
   # the maximum trials (how many trials the experiment can sample)
   # If this is -1, (virtually) infinite samples are generated until a stopping condition is met.
   trial_num_samples: -1
   # a training task (a trial) will run less or equal to the `max_epochs` epochs
   max_epochs: 1000 # 1000
-  # the whole experiment will stop after `time_budget_s` seconds 
-  time_budget_s: 
+  # the whole experiment will stop after `time_budget_s` seconds
+  time_budget_s:
 
-  # max concurrent trials if paralleled, 
+  # max concurrent trials if paralleled,
   # set this according to your task and hardware resources
   max_concurrent_trials: 1
   resources:
@@ -91,10 +91,9 @@ Tuning:
 
   # set true will load or process dataset from trainable model method
   load_dataset_by_trainable: true
-  
+
   # restore experiment from a experiment path, empty (blank) here will start training from begin
   restore_experiment_from: # "{{Tuning.storage_path}}/ChemGNN_MPDataset_2024-09-09_19-03-43"
-
 
 # Task
 # Analysis:
@@ -103,10 +102,14 @@ Dataset:
   MPDataset: # Material Project
     raw_dir: "{{Process.raw_dir}}/mp"
     processed_dir: "{{Process.processed_dir}}/mp"
-    api_key: j61NN3yuDh8tQWf0OrkachbbUoJ8npVP
-    chunk_size: 1000
-    num_chunks:
-    keep_data_from: "{{Dataset.MPDataset.raw_dir}}/origin_INDICES" # keep the data sorting from the INDICES file
+    download:
+      exclude_elements: ["O"]
+      include_elements:
+      api_key: j61NN3yuDh8tQWf0OrkachbbUoJ8npVP
+      chunk_size: 1000
+      num_elements: [3, 3]
+      num_chunks:
+      keep_data_from: "{{Dataset.MPDataset.raw_dir}}/origin_INDICES" # keep the data sorting from the INDICES file
     onehot_gen: false
     onehot_range: [1, 101]
     get_parameters_from: "{{Dataset.MPDataset.processed_dir}}"
@@ -115,6 +118,20 @@ Dataset:
     total_data_num: 41819
     processed_dir: "{{Process.processed_dir}}/mpl"
     get_parameters_from: "{{Dataset.MPDataset.processed_dir}}"
+  MPDatasetCeCoCuBased:
+    raw_dir: "{{Process.raw_dir}}/mpb"
+    processed_dir: "{{Process.processed_dir}}/mpb"
+    download:
+      exclude_elements: ["O"]
+      include_elements: ["Ce", "Co", "Cu"]
+      api_key: j61NN3yuDh8tQWf0OrkachbbUoJ8npVP
+      chunk_size: 1000
+      num_elements: [3, 3]
+      num_chunks:
+      keep_data_from: # keep the data sorting from the INDICES file
+    onehot_gen: false
+    onehot_range: [1, 101]
+    get_parameters_from: "{{Dataset.MPDatasetCeCoCuBased.processed_dir}}"
   HypoDataset: # Unoptimized Hypothesis Compounds
     processed_dir: "{{Process.processed_dir}}/hypo"
     scales: [0.96, 0.98, 1.00, 1.02, 1.04]
