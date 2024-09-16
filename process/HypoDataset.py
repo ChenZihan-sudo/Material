@@ -18,6 +18,7 @@ from utils import *
 
 module_filename = __name__.split(".")[-1]
 
+
 def get_replace_atomic_numbers(compound, target_atomic_numbers):
     """
     get atomic numbers replaced list from origin one to `target_atomic_numbers` with full permutations.
@@ -180,7 +181,6 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
     data_list = []
     poscar_data_list = []
     for i, d in enumerate(indices):
-
         # i = 355
         # d = indices[i]
 
@@ -228,10 +228,10 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
         )
         if save_point[save_track] == i:
             save_track += 1
-            file_path = osp.join(data_dir, f"{d_args["processed_filename"]}_{str(save_track)}.pt")
+            file_path = osp.join(data_dir, f"{d_args['processed_filename']}_{str(save_track)}.pt")
             print("Data block ", save_track, " saved on ", file_path)
             torch.save(data_list, file_path)
-            ase_file_path = osp.join(data_dir, f"{d_args["processed_ase_filename"]}_{str(save_track)}.pt")
+            ase_file_path = osp.join(data_dir, f"{d_args['processed_ase_filename']}_{str(save_track)}.pt")
             torch.save(poscar_data_list, ase_file_path)
             print("Saved data length:", len(data_list))
             data_list = []

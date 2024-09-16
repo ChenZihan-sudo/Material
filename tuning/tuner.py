@@ -9,7 +9,7 @@ from training.prepare import *
 
 from models import *
 from utils import *
-from process import make_dataset, delete_processed_data
+from process import make_dataset, delete_processed_data, create_dataset_occupy_table
 
 import ray
 from ray import tune, train
@@ -109,15 +109,18 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
     # tune_args["load_dataset_by_trainable"] = False  # debugging: remove this line
     # make dataset and data loader
     if tune_args["load_dataset_by_trainable"]:
-        train_dataset, validation_dataset, test_dataset, processed_data_path = make_dataset(dataset_name, args, **(tune_args["dataset"]))
+        train_dataset, validation_dataset, test_dataset, data_processed_path = make_dataset(dataset_name, args, **(tune_args["dataset"]))
     else:  # use the dataset passed from start_tuning method
-        train_dataset, validation_dataset, test_dataset, processed_data_path = dataset
+        train_dataset, validation_dataset, test_dataset, data_processed_path = dataset
 
     # sync the processed data path
     if args["Process"]["auto_processed_name"] is True:
-        args["Dataset"][dataset_name]["processed_dir"] = processed_data_path
-        dataset_args["processed_dir"] = processed_data_path
+        args["Dataset"][dataset_name]["processed_dir"] = data_processed_path
+        dataset_args["processed_dir"] = data_processed_path
         dataset_args["get_parameters_from"] = dataset_args["processed_dir"]
+
+    # patch: add identifier to delete datasets at a proper time
+    create_dataset_occupy_table(osp.join(args["Default"]["absolute_work_dir"], "tuning/dataset_occupy_table.pt"), data_processed_path, 1)
 
     dataloader_args = tune_args["data_loader"]
     train_loader, val_loader, test_loader = make_data_loader(train_dataset, validation_dataset, test_dataset, **dataloader_args)
@@ -192,6 +195,7 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
                 val_losses.append(float(row["val_losses"]))
                 test_losses.append(float(row["test_losses"]))
 
+    mae, r2 = 0.0, 0.0
     for epoch in range(epoch, epochs + 1):
         try:
             eval_results = None
@@ -255,13 +259,19 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
                 break
         except Exception as e:
             # delete all processed data
-            delete_processed_data(processed_data_path)
+            occupied = create_dataset_occupy_table(
+                osp.join(args["Default"]["absolute_work_dir"], "tuning/dataset_occupy_table.pt"), data_processed_path, -1
+            )
+            if occupied == 0:
+                delete_processed_data(data_processed_path)
             traceback.print_exc()
             raise RuntimeError(f"error during training, error msg: {e}")
     pbar.close()
 
     # delete all processed data
-    delete_processed_data(processed_data_path)
+    occupied = create_dataset_occupy_table(osp.join(args["Default"]["absolute_work_dir"], "tuning/dataset_occupy_table.pt"), data_processed_path, 1)
+    if occupied == 0:
+        delete_processed_data(data_processed_path)
 
 
 def start_tuning(model_name, dataset_name, args):
@@ -285,7 +295,10 @@ def start_tuning(model_name, dataset_name, args):
 
     # trainable = partial(trainable_model, model_name=model_name, dataset_name=dataset_name)
 
-    # create dataset in here
+    # patch: add identifier to delete datasets at a proper time
+    create_dataset_occupy_table(osp.join(args["Default"]["absolute_work_dir"], "tuning/dataset_occupy_table.pt"))
+
+    # choose load dataset in this method or in the trainable method
     dataset = make_dataset(dataset_name, args, **(tune_args["dataset"])) if tune_args["load_dataset_by_trainable"] is False else None
     trainable = tune.with_parameters(trainable_model, args=args, dataset=dataset, model_name=model_name, dataset_name=dataset_name)
 
@@ -319,6 +332,7 @@ def start_tuning(model_name, dataset_name, args):
             resume_errored=False,
             restart_errored=False,
         )
+        # tuner._local_tuner._tune_config.max_concurrent_trials = tune_args["max_concurrent_trials"]
 
     results = tuner.fit()
     best_result = results.get_best_result("mean_absolute_error", mode="min")

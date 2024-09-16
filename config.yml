@@ -10,7 +10,7 @@ Process:
   raw_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/raw"
   use_ase_atoms_raw_data: true
   processed_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/processed"
-  max_cutoff_distance: 0.4
+  max_cutoff_distance: 4.0
   max_cutoff_neighbors:
   edge:
     normalization: true
@@ -19,16 +19,13 @@ Process:
       enable: true
       # resolution: "{{Process.edge.edge_feature}}" # deprecated
       width: 0.2
-  process: MPDataset
   # auto generate processed dataset name
   auto_processed_name: true
 
 # Task
 Training:
-  model: ChemGNN
   epochs: 1000
   dataset:
-    name: MPDataset # MPDataset;HypothesisDataset;OptimizedHypoDataset
     trainset_ratio: 0.8
     valset_ratio: 0.1
     testset_ratio: 0.1
@@ -49,9 +46,7 @@ Training:
 Tuning:
   storage_path: "{{Default.absolute_work_dir}}/{{Default.tune_result_path}}/tune"
   log_to_file: true # set true will enable the log trainable output
-  model: ChemGNN
   dataset:
-    name: MPDataset # MPDataset;HypothesisDataset;OptimizedHypoDataset
     trainset_ratio: 0.8
     valset_ratio: 0.1
     testset_ratio: 0.1
@@ -70,18 +65,18 @@ Tuning:
   # If this is -1, (virtually) infinite samples are generated until a stopping condition is met.
   trial_num_samples: -1
   # a training task (a trial) will run less or equal to the `max_epochs` epochs
-  max_epochs: 1000 # 1000
+  max_epochs: 1100 # 1000
   # the whole experiment will stop after `time_budget_s` seconds
   time_budget_s:
 
   # max concurrent trials if paralleled,
   # set this according to your task and hardware resources
-  max_concurrent_trials: 1
+  max_concurrent_trials: 10
   resources:
     num_cpus: 16 # total hardware cpu(thread) resources
     num_gpus: 1 # total hardware gpu resources
-    trial_cpus: 16 # a trail uses trial_cpus=num_cpus/concurrent_trials if paralleled
-    trial_gpus: 1 # a trial uses trial_gpus=num_gpus/concurrent_trials if paralleled
+    trial_cpus: 8 # a trail uses trial_cpus=num_cpus/concurrent_trials if paralleled
+    trial_gpus: 0.5 # a trial uses trial_gpus=num_gpus/concurrent_trials if paralleled
 
   # the trial will end if the best model does not appear after the `keep_best_epochs` epochs,
   # the counter will reset to 0 when the best model appears
@@ -93,7 +88,7 @@ Tuning:
   load_dataset_by_trainable: true
 
   # restore experiment from a experiment path, empty (blank) here will start training from begin
-  restore_experiment_from: # "{{Tuning.storage_path}}/ChemGNN_MPDataset_2024-09-09_19-03-43"
+  restore_experiment_from: "{{Tuning.storage_path}}/ChemGNN_MPDatasetCeCoCuBased_2024-09-10_23-20-07"
 
 # Task
 # Analysis:

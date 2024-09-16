@@ -34,7 +34,7 @@ class MPDatasetLarge(Dataset):
     # Skip process if file exist
     @property
     def processed_file_names(self) -> list[str]:
-        file_names = f"{self.l_args['processed_filename']}_{str(self.l_args["total_data_num"])}.pt"
+        file_names = f"{self.l_args['processed_filename']}_{str(self.l_args['total_data_num'])}.pt"
         return file_names
 
     # Get all filenames from {DATASET_MP_RAW_DIR}/INDICES, skip download if those files exist

@@ -21,6 +21,9 @@ results/tune
 tune_results*/
 legacy*/
 
-*.out
+*.out*
 
 .ipynb_checkpoints/
+
+tune_analysis_data.pt
+dataset_occupy_table.pt

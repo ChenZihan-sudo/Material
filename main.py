@@ -32,13 +32,13 @@ parser.add_argument(
     required=False,
 )
 
-parser.add_argument("-M", "--model", default="ChemGNN", type=str, help="model name (ChemGNN, PNA, GCN)", required=False)
+parser.add_argument("-M", "--model", default="ChemGNN", type=str, help="model name (ChemGNN, PNA, GCN, etc.)", required=False)
 parser.add_argument(
     "-D",
     "--dataset",
     default="MPDataset",
     type=str,
-    help="dataset name (MPDataset, MPDatasetLarge, HypoDataset and OptimizedHypoDataset)",
+    help="dataset name (MPDataset, MPDatasetLarge, HypoDataset, OptimizedHypoDataset, etc.)",
     required=False,
 )
 

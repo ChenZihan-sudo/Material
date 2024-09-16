@@ -11,6 +11,7 @@ __all__ = [
     "HypoDataset",
     "OptimizedHypoDataset",
     "make_dataset",
+    "create_dataset_occupy_table",
 ]
 
 
@@ -24,7 +25,7 @@ def random_split_dataset(dataset, lengths=None, seed=None):
     return train_dataset, validation_dataset, test_dataset
 
 
-# make processed file name
+# make processed file name based on the config parameters
 def make_processed_filename(dataset_name: str, args: dict):
     p = args["Process"]
     name_prefix = args["Dataset"][dataset_name]["processed_dir"]
@@ -65,3 +66,35 @@ def delete_processed_data(processed_data_path: str):
     cmd_str = f"rm -rf {processed_data_path}"
     print(f"delete command: {cmd_str}")
     os.system(cmd_str)
+
+
+# The dataset occupy table is designed to avoid deleting a dataset,
+# where two more workers are paralleled but one is finished and one is still working.
+# We get the processed data folder name as the key.
+# When a worker starts to use it, the value + 1. When it is finished, the value - 1.
+# Every worker when they finished will check the value, if it's 0 the dataset will be deleted.
+def create_dataset_occupy_table(path="dataset_occupy_table.pt", data_processed_path: str = None, increment: int = 0):
+    import torch
+
+    # if increment is 0 create a occupy table to the path
+    if increment == 0:
+        data = {}
+    else:  # load from path
+        data = torch.load(path)
+
+    dataset_occupy_table = data
+
+    # add processed name to the occupy table
+    if increment != 0 and data_processed_path is not None:
+        dataset_postfix_name = data_processed_path.split("/")[-1]
+        dataset_occupy_table[dataset_postfix_name] = (
+            increment if dataset_postfix_name not in dataset_occupy_table else dataset_occupy_table[dataset_postfix_name] + increment
+        )
+        if dataset_occupy_table[dataset_postfix_name] < 0:
+            dataset_occupy_table[dataset_postfix_name] = 0
+
+    torch.save(dataset_occupy_table, path)
+    print("Dataset Occupy Table: ", dataset_occupy_table)
+
+    if increment != 0 and data_processed_path is not None:
+        return dataset_occupy_table[dataset_postfix_name]
