@@ -10,11 +10,11 @@ Process:
   raw_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/raw"
   use_ase_atoms_raw_data: true
   processed_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/processed"
-  max_cutoff_distance: 4.0
-  max_cutoff_neighbors:
+  max_cutoff_distance: 8.0
+  max_cutoff_neighbors: 100
   edge:
     normalization: true
-    edge_feature: 10
+    edge_feature: 30
     gaussian_smearing:
       enable: true
       # resolution: "{{Process.edge.edge_feature}}" # deprecated
@@ -133,17 +133,23 @@ Dataset:
     atomic_numbers: [58, 27, 29]
     processed_filename: data # processed data filename
     processed_ase_filename: ase_data
-    split_num: 10 # split dataset to multiple data block
+    split_num: 20 # split the dataset into multiple data block
     get_parameters_from: "{{Dataset.MPDataset.raw_dir}}"
-  OptimizedHypoDataset: # Optimized Hypothesis Compounds
+  UnoptimizedHypoDataset: # Unoptimized Hypothesis Compounds (Sampled)
+    raw_dir: "{{Process.raw_dir}}/unopt_hypo"
+    processed_dir: "{{Process.processed_dir}}/unopt_hypo"
+    onehot_range: [1, 101]
+    total_num: 4542
+    get_parameters_from: "{{Dataset.MPDataset.raw_dir}}"
+  OptimizedHypoDataset: # Optimized Hypothesis Compounds (Sampled)
     raw_dir: "{{Process.raw_dir}}/opt_hypo"
     processed_dir: "{{Process.processed_dir}}/opt_hypo"
-    onehot_gen: false
     onehot_range: [1, 101]
     total_num: 4542
     formation_energy_filename: FORMATION_ENERGY_
     compound_filename: POSCAR_
-    get_parameters_from: "{{Dataset.OptimizedHypoDataset.raw_dir}}"
+    inherit_parameters_from: "{{Dataset.MPDataset.raw_dir}}"
+    get_parameters_from: "{{Dataset.OptimizedHypoDataset.inherit_parameters_from}}"
 
 Models:
   ChemGNN:

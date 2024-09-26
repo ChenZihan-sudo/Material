@@ -21,7 +21,6 @@ from ray.tune.schedulers import ASHAScheduler
 import models
 
 from datetime import datetime
-
 from functools import partial
 
 

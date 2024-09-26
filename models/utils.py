@@ -27,10 +27,10 @@ def load_model(model_path, file_name="checkpoint.pt", load_dict=False, map_locat
     import torch
     from os import path as osp
 
-    if map_location is None:
-        from utils import get_device
+    # if map_location is None:
+    #     from utils import get_device
 
-        map_location = get_device()
+    #     map_location = get_device()
 
     model_path = osp.join(model_path, file_name)
     data = torch.load(model_path, map_location=map_location)
@@ -60,7 +60,7 @@ def generate_deg(dataset):
     return deg
 
 
-# Prints model summary
+# print model summary
 def model_summary(model, file=None):
     import torch
     from sys import stdout

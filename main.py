@@ -45,8 +45,20 @@ parser.add_argument(
 # Process, Training, Tuning, Analysis
 parser.add_argument("-T", "--task", default="Training", type=str, help="task name (Process, Training, Tuning and TuningAnalysis)", required=True)
 
-# Get arguments from command line
-cmd_args = parser.parse_args(sys.argv[1:])
+# Get arguments from the command line
+cmd_args = sys.argv[1:]
+tag, b, e = False, 0, len(cmd_args) - 1
+for i, d in enumerate(cmd_args):
+    if d == "{":
+        b = i
+        tag = True
+    if e == "{":
+        e = i
+extra_cmd_args = cmd_args[b + 1 : e]
+print("cmd_args", cmd_args[: b if tag else len(cmd_args)])
+print("extra_cmd_args", extra_cmd_args)
+cmd_args = parser.parse_args(cmd_args[: b if tag else len(cmd_args)])
+
 
 model = cmd_args.model
 dataset = cmd_args.dataset
@@ -94,7 +106,14 @@ if cmd_args.task == "Training":
 if cmd_args.task == "Process":
     import process
 
-    getattr(process, dataset)(config)
+    dataset = getattr(process, dataset)(config)
+    print(f"dataset total length: {len(dataset)}")
+
+# analysis
+if cmd_args.task == "Analysis":
+    import analysis
+
+    analysis.manager(config,extra_cmd_args)
 
 # tuning
 if cmd_args.task == "Tuning":
@@ -125,7 +144,8 @@ if cmd_args.task == "TuningAnalysis":
         print(f"Total trials: {len(result_grid)}")
         print(f"Error trials: {len(error_trails)}")
         print(f"==================BEST RESULT==================")
-        best_result = result_grid.get_best_result("mean_absolute_error", mode="min")
+        # best_result = result_grid.get_best_result("mean_absolute_error", mode="min")
+        best_result = result_grid.get_best_result("r2", mode="max")
         storage_path = best_result.metrics["storage_path"]
         mean_absolute_error = best_result.metrics["mean_absolute_error"]
         mae = best_result.metrics["mae"]
@@ -137,6 +157,7 @@ if cmd_args.task == "TuningAnalysis":
         print(f"===============================================")
         tune_analysis_data = {"result_grid": result_grid}
         import torch
+
         path = "./tune_analysis_data.pt"
         torch.save(tune_analysis_data, path)
         print(f"Tuning analysis data saved on {path}")

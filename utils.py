@@ -136,17 +136,17 @@ def save_regression_result(test_out, test_y, result_path, filename="regression_r
         file.close()
 
 
-def tensor_min_max_scalar_1d(data, new_min=0.0, new_max=1.0) -> tuple[list, torch.Tensor]:
+def tensor_min_max_scalar_1d(data, data_min=None, data_max=None, new_min=0.0, new_max=1.0) -> tuple[list, torch.Tensor]:
     assert isinstance(data, torch.Tensor)
-    data_min = torch.min(data).item()
-    data_max = torch.max(data).item()
+    data_min = torch.min(data).item() if data_min is None else data_min
+    data_max = torch.max(data).item() if data_max is None else data_max
 
     if data_max > data_min:
         core = (data - data_min) / (data_max - data_min)
         data_new = core * (new_max - new_min) + new_min
         return data_new, data_min, data_max
     else:
-        return data, data_min, data_max
+        raise RuntimeWarning("maximum data value less than minimum data value")
 
 
 def get_data_scale(data_path):
@@ -357,16 +357,6 @@ def normalization_1d(data, origin_min=None, origin_max=None, normalized_min=None
     core = (data - origin_min) / (origin_max - origin_min)
     normalized_data = core * (normalized_max - normalized_min) + normalized_min
     return normalized_data, origin_min, origin_max
-
-
-def reverse_normalization_1d(normalized_data, normalized_min, normalized_max, origin_min, origin_max):
-    import torch
-
-    assert isinstance(normalized_data, torch.Tensor), "data is not a torch.Tensor"
-
-    core = (normalized_data - normalized_min) / (normalized_max - normalized_min)
-    data_original = core * (origin_max - origin_min) + origin_min
-    return data_original
 
 
 def distance_matrix_cutoff(matrix, max_distance_cutoff, max_neighbors=None):

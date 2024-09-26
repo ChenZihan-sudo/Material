@@ -49,7 +49,7 @@ def get_replace_atomic_numbers(compound, target_atomic_numbers):
 
 def scale_compound_volume(compound, scaling_factor):
     """
-    scale the compound by volume
+    scale the compound based on the volume
     """
     scaling_factor = scaling_factor ** (1 / 3)
     compound.set_cell(compound.cell * scaling_factor, scale_atoms=True)
@@ -59,7 +59,7 @@ def get_ase_hypothesis_compounds(scales, hypo_atomic_numbers, original_compound)
     """
     get ase format hypothesis compounds from one original compound
 
-    total hypothesis compounds num is `len(scales) * len(hypo_atomic_numbers)`
+    total hypothesis compounds num from a single compound is `len(scales) * len(hypo_atomic_numbers)`
 
     return `hypothesis_compounds` with ase compounds
     """
@@ -88,7 +88,7 @@ def get_ase_hypothesis_compounds(scales, hypo_atomic_numbers, original_compound)
     return hypothesis_compounds
 
 
-def get_one_hypothesis_compound(compound, onehot_dict, max_cutoff_distance):
+def get_one_hypothesis_compound(compound, onehot_dict, max_cutoff_distance, max_cutoff_neighbors, edge_args=None):
     """
     get Data() from one hypothesis compound
     """
@@ -97,12 +97,15 @@ def get_one_hypothesis_compound(compound, onehot_dict, max_cutoff_distance):
     # get distance matrix
     distance_matrix = compound.get_all_distances(mic=True)
 
-    # get mask by max cutoff distance
-    cutoff_mask = distance_matrix > max_cutoff_distance
-    # suppress invalid values using max cutoff distance
-    distance_matrix = np.ma.array(distance_matrix, mask=cutoff_mask)
-    # let '--' in the masked array to 0
-    distance_matrix = np.nan_to_num(np.where(cutoff_mask, np.isnan(distance_matrix), distance_matrix))
+    # # get mask by max cutoff distance
+    # cutoff_mask = distance_matrix > max_cutoff_distance
+    # # suppress invalid values using max cutoff distance
+    # distance_matrix = np.ma.array(distance_matrix, mask=cutoff_mask)
+    # # let '--' in the masked array to 0
+    # distance_matrix = np.nan_to_num(np.where(cutoff_mask, np.isnan(distance_matrix), distance_matrix))
+
+    # cutoff distance matrix based on max distance and max neigbors
+    distance_matrix = distance_matrix_cutoff(distance_matrix, max_cutoff_distance, max_cutoff_neighbors)
 
     # make it as a tensor
     distance_matrix = torch.Tensor(distance_matrix)
@@ -115,7 +118,16 @@ def get_one_hypothesis_compound(compound, onehot_dict, max_cutoff_distance):
     # add self loop
     data.edge_index, data.edge_weight = add_self_loops(data.edge_index, data.edge_weight, num_nodes=len(compound), fill_value=0)
 
-    data.edge_attr = edge_weight_to_edge_attr(data.edge_weight)
+    # edge normalization
+    if edge_args["normalization"] is True:
+        data.edge_weight, _, _ = normalization_1d(data.edge_weight, 0.0, max_cutoff_distance, 0.0, 1.0)
+
+    # edge gaussian smearing
+    if edge_args["gaussian_smearing"]["enable"] is True:
+        data.edge_attr = gaussian_smearing(0.0, 1.0, data.edge_weight, **edge_args["gaussian_smearing"])
+    else:
+        data.edge_attr = edge_weight_to_edge_attr(data.edge_weight)
+
     delattr(data, "edge_weight")
 
     # get onehot x
@@ -136,6 +148,7 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
         `args`: parameters
         `split_num`: specify how many splited blocks
     """
+    p_args = args["Process"]
     d_args = args["Dataset"][module_filename]
     mp_args = args["Dataset"]["MPDataset"]
 
@@ -152,16 +165,16 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
 
     # fully permutations of atomic numbers
     num_atomic_numbers_perms = len([i for i in permutations(hypo_atomic_numbers, len(hypo_atomic_numbers))])
-    # hypothesis compounds for single original compound
+    # num of hypothesis compounds from a single original compound
     single_processed = len(scales) * num_atomic_numbers_perms
-    # num all hypothesis compounds
+    # total num of all hypothesis compounds
     total_processed = len(indices) * single_processed
 
     # process progress bar
     pbar = tqdm(total=total_processed)
     pbar.set_description("hypothesis compounds dataset processing")
 
-    # read one hot dict from {DATASET_MP_RAW_DIR}/onehot_dict.json
+    # read one hot dict from {raw_dir}/onehot_dict.json
     onehot_dict = read_onehot_dict(mp_args["raw_dir"], "onehot_dict.json")
 
     # split data if need
@@ -179,15 +192,19 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
     hypo_data_track = 1
     hypo_indices = []
     data_list = []
-    poscar_data_list = []
-    for i, d in enumerate(indices):
-        # i = 355
-        # d = indices[i]
+    atom_data_list = []
 
+    # prepare edge feature
+    edge_args = p_args["edge"]
+    if edge_args["gaussian_smearing"]["enable"] is True:
+        edge_args["gaussian_smearing"]["resolution"] = edge_args["edge_feature"]
+    max_cutoff_distance = p_args["max_cutoff_distance"]
+    max_cutoff_neighbors = p_args["max_cutoff_neighbors"]
+    for i, d in enumerate(indices):
         # d: one item in indices (e.g. i=0, d=['1', 'mp-861724', '-0.41328523750000556'])
         # read original compound data
         idx, mid, y = d[0], d[1], d[2]
-        filename = osp.join("{}".format(mp_args["raw_dir"]), "CONFIG_" + idx + ".poscar")
+        filename = osp.join("{}".format(mp_args["raw_dir"]), f"CONFIG_{idx}.poscar")
         original_compound = ase_read(filename, format="vasp")
 
         # get hypothesis ase compounds
@@ -195,19 +212,26 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
 
         # get data list of hypothesis compounds
         hypo_data_list = [
-            get_one_hypothesis_compound(hypo_compound, onehot_dict, args["Process"]["max_cutoff_distance"]) for hypo_compound in hypo_compounds
+            get_one_hypothesis_compound(
+                hypo_compound,
+                onehot_dict,
+                max_cutoff_distance,
+                max_cutoff_neighbors,
+                edge_args,
+            )
+            for hypo_compound in hypo_compounds
         ]
 
-        # append all of hypo data into data_list
+        # append all of hypo data into data list
         for j, hypo_data in enumerate(hypo_data_list):
             hypo_data.id = j + hypo_data_track
             data_list.append(hypo_data)
 
-            # transform ase to poscar format string
+            # transform ase atom to the poscar format string
             output = io.StringIO()
             hypo_compounds[j].write(output, format="vasp")
             poscar = (hypo_data.id, output)
-            poscar_data_list.append(poscar)
+            atom_data_list.append(poscar)
 
         pbar.update(single_processed)
         hypo_data_track += single_processed
@@ -228,14 +252,20 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
         )
         if save_point[save_track] == i:
             save_track += 1
+            print("data block ", save_track, " saved on ", data_dir)
+
+            # processed file path
             file_path = osp.join(data_dir, f"{d_args['processed_filename']}_{str(save_track)}.pt")
-            print("Data block ", save_track, " saved on ", file_path)
             torch.save(data_list, file_path)
+
+            # ase data file
             ase_file_path = osp.join(data_dir, f"{d_args['processed_ase_filename']}_{str(save_track)}.pt")
-            torch.save(poscar_data_list, ase_file_path)
+            torch.save(atom_data_list, ase_file_path)
+
             print("Saved data length:", len(data_list))
+
             data_list = []
-            poscar_data_list = []
+            atom_data_list = []
 
         # if i == 1:
         # break

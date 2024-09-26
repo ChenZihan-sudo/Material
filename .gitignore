@@ -27,3 +27,5 @@ legacy*/
 
 tune_analysis_data.pt
 dataset_occupy_table.pt
+
+sample_*data/
