@@ -1,5 +1,6 @@
 from .model_prediction import model_prediction, analyse_model_prediction
 from .dataset_target_distribution import dataset_target_distribution
+from .regression_analysis import regression_analysis
 
 # from .sample_data import sample_data
 
@@ -16,16 +17,18 @@ def manager(config, args):
 
     parser.add_argument("-C", "--config_path", default="config.yml", type=str, help="config file path (default: config.yml)")
     parser.add_argument("-M", "--model_path", required=True, type=str, help="model path for inference (<model path>/checkpoint.pt)")
-    parser.add_argument("-D", "--dataset_name", required=True, type=str, help="dataset type (HypoDataset or OptimizedHypoDataset)")
+    parser.add_argument("-D", "--dataset_name", required=True, type=str, help="dataset type (HypoDataset, OptimizedHypoDataset, etc.)")
     parser.add_argument("-B", "--batch_size", required=False, default=500, type=int)
-    parser.add_argument("-G", "--generation", default="1G", type=str, help="generation tag of the model (default:1G)")
+    parser.add_argument("-G", "--generation", default="1G", type=str, help="the generation name tag of the model (default:1G)")
+
+    # parser.add_argument("-R", "--figure_range", default=[-1.0, 2.0], type=list, help="generation tag of the model (default:1G)")
 
     # task configuration
 
     # model_prediction: generate model prediction results from a dataset and save the results to the model path
     # analyse_model_prediction: analyse the model results, generate a distribution histogram
     # dataset_target_distribution: generate dataset target(formation energy) results and save the results to the dataset path. Analyse the target distribution, show it by a histogram.
-    # regression_figure: 
+    # regression_analysis: generate regression graph based on the dataset target result (x axis) and the model prediction result (y axis). Store the graph to the model path.
     # sample_data: sample the hypothesis compound data from the hypothesis dataset
     parser.add_argument(
         "-T", "--task", default="", type=str, help="task name (model_prediction, analyse_model_prediction, sample_data)", required=True
@@ -50,6 +53,9 @@ def manager(config, args):
 
     if cmd_args.task == "dataset_target_distribution":
         dataset_target_distribution(config, **(cmd_args_dict))
+
+    if cmd_args.task == "regression_analysis":
+        regression_analysis(config, **(cmd_args_dict))
 
 
 __all__ = ["manager", "model_prediction", "analyse_model_prediction"]

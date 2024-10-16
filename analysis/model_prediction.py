@@ -69,11 +69,15 @@ def model_prediction(config, model_path, batch_size, dataset_name, generation, *
         full_out = torch.cat((full_out, out), 0)
         idx_out = torch.cat((idx_out, idx), 0)
 
-    # reverse data scale
     print(dataset_args)
-    min, max = get_data_scale(dataset_args["get_parameters_from"])
-    print(f"data scale: {min}, {max}")
-    get_out = reverse_min_max_scalar_1d(full_out, min, max)
+
+    # reverse data scale
+    if config["Process"]["target_normalization"]:
+        min, max = get_data_scale(dataset_args["get_parameters_from"])
+        print(f"data scale: {min}, {max}")
+        get_out = reverse_min_max_scalar_1d(full_out, min, max)
+    else:
+        get_out = full_out
     print(f"data nums: {len(get_out)}")
 
     predicts_path = osp.join(model_path, f"{generation}_{dataset_name}_predict.pt")
@@ -86,12 +90,15 @@ def analyse_model_prediction(config, model_path, batch_size, dataset_name, gener
     import numpy as np
     import torch
 
+    model_pred_path = osp.join(model_path, f"{generation}_{dataset_name}_predict.pt")
+    if not osp.exists(model_pred_path):
+        print(f"File {model_pred_path} not exists. Try to generate the model prediction result...")
+        model_prediction(config, model_path, batch_size, dataset_name, generation)
+
     get_out, idx_out = torch.load(osp.join(model_path, f"{generation}_{dataset_name}_predict.pt"))
 
-    # plt.hist(get_out.to("cpu"), range=(-1.0, 2.0), bins=30)
-
     # show results
-    counts, bins = np.histogram(get_out.to("cpu"), bins=30, range=(-1.0, 2.0))
+    counts, bins = np.histogram(get_out.to("cpu"), bins=50, range=None)
     bin_centers = (bins[:-1] + bins[1:]) / 2
     width = 0.8 * (bins[1] - bins[0])
     # print(bin_centers, counts)

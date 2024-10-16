@@ -45,11 +45,10 @@ def save_result_data(
     _, out, y = eval_results
 
     # Reverse normalization of out and y
-    min, max = get_data_scale(dataset_args["get_parameters_from"])
-    y = reverse_min_max_scalar_1d(y, min, max)
-    out = reverse_min_max_scalar_1d(out, min, max)
-    # loss = (out.squeeze() - y).abs().mean()
-    # print("MAE loss: ", loss.item())
+    if args["Process"]["target_normalization"]:
+        min, max = get_data_scale(dataset_args["get_parameters_from"])
+        y = reverse_min_max_scalar_1d(y, min, max)
+        out = reverse_min_max_scalar_1d(out, min, max)
 
     # save results
     plot_training_progress(len(train_losses), train_losses, val_losses, test_losses, res_path=result_path, threshold=0.2)

@@ -61,6 +61,8 @@ def make_dataset(
     dataset = getattr(sys.modules[__name__], dataset_name)(args)
     lengths = [trainset_ratio, valset_ratio, testset_ratio]
     train_dataset, validation_dataset, test_dataset = random_split_dataset(dataset, lengths=lengths, seed=seed)
+
+    print("Processed dataset path: ", processed_data_path)
     return train_dataset, validation_dataset, test_dataset, processed_data_path
 
 

@@ -10,8 +10,8 @@ Process:
   raw_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/raw"
   use_ase_atoms_raw_data: true
   processed_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/processed"
-  max_cutoff_distance: 8.0
-  max_cutoff_neighbors: 100
+  max_cutoff_distance: 9.0
+  max_cutoff_neighbors: 
   edge:
     normalization: true
     edge_feature: 30
@@ -21,6 +21,8 @@ Process:
       width: 0.2
   # auto generate processed dataset name
   auto_processed_name: true
+  # enable target normalization
+  target_normalization: true
 
 # Task
 Training:
@@ -31,8 +33,8 @@ Training:
     testset_ratio: 0.1
     seed: 1
   data_loader:
-    batch_size: 800
-    num_workers: 1
+    batch_size: 600
+    num_workers: 2
     seed: 1
   save_best_model: true # get best model based on best test loss
   # save_step: 2 # save results every save_step epochs
@@ -137,13 +139,13 @@ Dataset:
     get_parameters_from: "{{Dataset.MPDataset.raw_dir}}"
   UnoptimizedHypoDataset: # Unoptimized Hypothesis Compounds (Sampled)
     raw_dir: "{{Process.raw_dir}}/unopt_hypo"
-    processed_dir: "{{Process.processed_dir}}/unopt_hypo"
+    processed_dir: "{{Process.processed_dir}}/unopt_hypo_{{Process.max_cutoff_distance}}"
     onehot_range: [1, 101]
     total_num: 4542
     get_parameters_from: "{{Dataset.MPDataset.raw_dir}}"
   OptimizedHypoDataset: # Optimized Hypothesis Compounds (Sampled)
     raw_dir: "{{Process.raw_dir}}/opt_hypo"
-    processed_dir: "{{Process.processed_dir}}/opt_hypo"
+    processed_dir: "{{Process.processed_dir}}/opt_hypo_{{Process.max_cutoff_distance}}"
     onehot_range: [1, 101]
     total_num: 4542
     formation_energy_filename: FORMATION_ENERGY_
@@ -166,8 +168,8 @@ Models:
     pre_fc_dim: [100]
     num_layers: 1
     conv_out_dim: 100
-    post_fc_dim: [150, 100]
-    dropout_rate: 0.0
+    post_fc_dim: [100, 50]
+    dropout_rate: 0.1
     pool: "global_mean_pool"
     learning_rate: 0.02
     optimizer:

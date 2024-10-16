@@ -13,7 +13,7 @@ def dataset_target_distribution(config, model_path, batch_size, dataset_name, ge
     dataset = getattr(process, dataset_name)(config)
     dataset_args = config["Dataset"][dataset_name]
     processed_path = dataset_args["processed_dir"]
-    
+
     if "y" not in dataset[0]:
         print(f"{dataset_name} don't have a target (y, formation energy)")
         return
@@ -23,8 +23,9 @@ def dataset_target_distribution(config, model_path, batch_size, dataset_name, ge
         results = torch.cat((results, d.y), 0)
 
     # reverse data target presentation
-    data_min, data_max = get_data_scale(dataset_args["get_parameters_from"])
-    results = reverse_min_max_scalar_1d(results, data_min, data_max)
+    if config["Process"]["target_normalization"]:
+        data_min, data_max = get_data_scale(dataset_args["get_parameters_from"])
+        results = reverse_min_max_scalar_1d(results, data_min, data_max)
 
     # save dataset target data
     torch.save(results, osp.join(processed_path, f"{dataset_name}_target.pt"))
@@ -34,13 +35,13 @@ def dataset_target_distribution(config, model_path, batch_size, dataset_name, ge
     counts, bins = np.histogram(get_out.to("cpu"), bins=50)
     bin_centers = (bins[:-1] + bins[1:]) / 2
     width = 0.8 * (bins[1] - bins[0])
-    
+
     plt.figure(figsize=(7, 5))
     plt.title(f"Formation Energy Distribution on Dataset {dataset_name}")
     plt.xlabel("Formation energy (ev/atom)")
     plt.ylabel("Number of count")
     plt.bar(bin_centers, height=counts, width=width)
-    
+
     get_out_np = get_out.to("cpu").numpy()
     info = (
         f"total: {len(get_out_np)}\nEf<0: {len(get_out_np[get_out_np < 0.0])}\nEf<-0.2: {len(get_out_np[get_out_np < -0.2])}\nEf>0: {len(get_out_np[get_out_np > 0])}\n"

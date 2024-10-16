@@ -60,10 +60,6 @@ print("extra_cmd_args", extra_cmd_args)
 cmd_args = parser.parse_args(cmd_args[: b if tag else len(cmd_args)])
 
 
-model = cmd_args.model
-dataset = cmd_args.dataset
-
-
 def convert_str_to_number(d):
     if isinstance(d, dict):
         for k, v in d.items():
@@ -96,6 +92,12 @@ def yaml_from_template(config_path, recursive_render_time=5):
 config = yaml_from_template(cmd_args.config_path, recursive_render_time=10)
 config = convert_str_to_number(config)
 
+# add cmd paramters
+model = cmd_args.model
+dataset = cmd_args.dataset
+config["Default"]["model_name"] = model
+config["Default"]["dataset_name"] = dataset
+
 # training
 if cmd_args.task == "Training":
     import training
@@ -113,7 +115,7 @@ if cmd_args.task == "Process":
 if cmd_args.task == "Analysis":
     import analysis
 
-    analysis.manager(config,extra_cmd_args)
+    analysis.manager(config, extra_cmd_args)
 
 # tuning
 if cmd_args.task == "Tuning":

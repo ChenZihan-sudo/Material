@@ -129,12 +129,15 @@ def raw_data_process(args, onehot_range: list = None) -> list:
         for i, data in enumerate(data_list):
             data.edge_attr = edge_weight_to_edge_attr(data.edge_weight)
 
+    # target normalization
     # * inherit paramters from the MPDataset
     # * inherit formation energy scale from the inherit_parameters_from
-    data_min, data_max = get_data_scale(d_args["inherit_parameters_from"])
     y_list = torch.tensor([data_list[i].y for i in range(len(data_list))])
-    y_list, data_min, data_max = tensor_min_max_scalar_1d(y_list, data_min=data_min, data_max=data_max)
-    print(f"get data scale from the inherit paramters, min:{data_min} max:{data_max}")
+    data_min, data_max = 0.0, 1.0
+    if p_args["target_normalization"]:
+        data_min, data_max = get_data_scale(d_args["inherit_parameters_from"])
+        print(f"get data scale from the inherit paramters, min:{data_min} max:{data_max}")
+        y_list, data_min, data_max = tensor_min_max_scalar_1d(y_list, data_min=data_min, data_max=data_max)
     for i, d in enumerate(data_list):
         d.y = torch.Tensor(np.array([y_list[i]], dtype=np.float32))
 

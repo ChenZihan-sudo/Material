@@ -5,9 +5,11 @@ import torch
 import torch.nn.functional as F
 from torch.nn import Linear, ReLU, Sequential, ModuleList, BatchNorm1d
 import torch_geometric.nn
+from torch_geometric.nn import Set2Set
 
 from .ceal import CEALConv
 from .utils import convert_fc_dim
+
 
 class ChemGNN(torch.nn.Module):
     def __init__(
@@ -33,9 +35,9 @@ class ChemGNN(torch.nn.Module):
         # definitions in class
         self.deg = deg
 
-        self.in_dim = in_dim
-        self.conv_out_dim = conv_out_dim
-        self.num_layers = num_layers
+        # self.in_dim = in_dim
+        # self.conv_out_dim = conv_out_dim
+        # self.num_layers = num_layers
 
         self.pre_fc_dim = pre_fc_dim
         self.post_fc_dim = post_fc_dim
@@ -64,6 +66,9 @@ class ChemGNN(torch.nn.Module):
 
         # pooling
         self.pool = pool
+        if self.pool == "set2set":
+            self.set2set = Set2Set(conv_out_dim, processing_steps=3)
+            conv_out_dim = conv_out_dim * 2  # the output of the layer with twice the dimensionality as the input
 
         # post fc
         self.num_post_fc = len(self.post_fc_dim)
@@ -102,7 +107,10 @@ class ChemGNN(torch.nn.Module):
             return out
 
         # pooling
-        out = getattr(torch_geometric.nn, self.pool)(out, batch)
+        if self.pool == "set2set":
+            out = self.set2set(out, batch)
+        else:
+            out = getattr(torch_geometric.nn, self.pool)(out, batch)
 
         # post full connect
         for i, lin in enumerate(self.post_fc):

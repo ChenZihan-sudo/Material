@@ -41,11 +41,12 @@ def save_result_data(
     _, out, y = eval_results
 
     # Reverse normalization of out and y
-    min, max = get_data_scale(dataset_args["get_parameters_from"])
-    y = reverse_min_max_scalar_1d(y, min, max)
-    out = reverse_min_max_scalar_1d(out, min, max)
-    # loss = (out.squeeze() - y).abs().mean()
-    # print("MAE loss: ", loss.item())
+    if args["Process"]["target_normalization"]:
+        # print(args)
+        # print(dataset_args["get_parameters_from"])
+        min, max = get_data_scale(dataset_args["get_parameters_from"])
+        y = reverse_min_max_scalar_1d(y, min, max)
+        out = reverse_min_max_scalar_1d(out, min, max)
 
     # save results
     plot_training_progress(len(train_losses), train_losses, val_losses, test_losses, res_path=result_path, threshold=0.2)
@@ -60,7 +61,6 @@ def save_result_data(
 
 
 def start_training(model_name, dataset_name, args):
-
     print(f"############ Start Training on {model_name} with {dataset_name} ############")
     train_args = args["Training"]
     dataset_args = args["Dataset"][dataset_name]
@@ -89,9 +89,15 @@ def start_training(model_name, dataset_name, args):
         print(f"############ Resume Training on {model_name} with {dataset_name} ############")
 
     # make dataset and data loader
-    train_dataset, validation_dataset, test_dataset = make_dataset(dataset_name, args, **(train_args["dataset"]))
+    train_dataset, validation_dataset, test_dataset, data_processed_path = make_dataset(dataset_name, args, **(train_args["dataset"]))
     dataloader_args = train_args["data_loader"]
     train_loader, val_loader, test_loader = make_data_loader(train_dataset, validation_dataset, test_dataset, **dataloader_args)
+
+    # sync the processed data path if auto processed the dataset name
+    if args["Process"]["auto_processed_name"] is True:
+        args["Dataset"][dataset_name]["processed_dir"] = data_processed_path
+        dataset_args["processed_dir"] = data_processed_path
+        dataset_args["get_parameters_from"] = dataset_args["processed_dir"]
 
     print(f"dataset num, train:{len(train_dataset)}, val:{len(validation_dataset)}, test:{len(test_dataset)}")
 
@@ -109,7 +115,7 @@ def start_training(model_name, dataset_name, args):
         print(f"model in_dim: {in_dim}")
 
         if model_name in ("PNA", "ChemGNN"):
-            model_args["conv_params"]["edge_dim"] = args["Process"]["edge"]["edge_feature"] # import edge_dim from Process.edge.edge_feature
+            model_args["conv_params"]["edge_dim"] = args["Process"]["edge"]["edge_feature"]  # import edge_dim from Process.edge.edge_feature
             deg = generate_deg(train_dataset).float()
             deg = deg.to(device)
             model = getattr(models, model_name)(deg, in_dim, **model_args)
@@ -165,7 +171,6 @@ def start_training(model_name, dataset_name, args):
                 test_losses.append(float(row["test_losses"]))
 
     for epoch in range(epoch, epochs + 1):
-
         eval_results = None
 
         model, train_loss = train_step(model, train_loader, train_dataset, optimizer, device)

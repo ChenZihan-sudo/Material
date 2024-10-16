@@ -261,9 +261,11 @@ def raw_data_process(args, onehot_gen=False, onehot_range: list = None) -> list:
             data.edge_attr = edge_weight_to_edge_attr(data.edge_weight)
 
     # target normalization
-    print("target normalization...")
     y_list = torch.tensor([data_list[i].y for i in range(len(data_list))])
-    y_list, data_min, data_max = tensor_min_max_scalar_1d(y_list)
+    data_min, data_max = 0.0, 1.0
+    if p_args["target_normalization"]:
+        print("target normalization...")
+        y_list, data_min, data_max = tensor_min_max_scalar_1d(y_list)
     for i, d in enumerate(data_list):
         d.y = torch.Tensor(np.array([y_list[i]], dtype=np.float32))
 
