@@ -14,8 +14,8 @@ def get_device(device_name=None, args=None) -> str:
     device = None
     if device_name is not None:
         device = torch.device(device_name)
-    elif args is not None or "device" in args:
-        device = torch.device(args["Default"]["device"])
+    elif args is not None:
+        device = torch.device(args["Default"]["device"]) if "device" in args["Default"] else device
     else:
         device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     return device

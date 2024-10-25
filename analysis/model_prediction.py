@@ -98,7 +98,7 @@ def analyse_model_prediction(config, model_path, batch_size, dataset_name, gener
     get_out, idx_out = torch.load(osp.join(model_path, f"{generation}_{dataset_name}_predict.pt"))
 
     # show results
-    counts, bins = np.histogram(get_out.to("cpu"), bins=50, range=None)
+    counts, bins = np.histogram(get_out.to("cpu"), bins=50, range=[-1, 5])
     bin_centers = (bins[:-1] + bins[1:]) / 2
     width = 0.8 * (bins[1] - bins[0])
     # print(bin_centers, counts)

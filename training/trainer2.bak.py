@@ -1,3 +1,4 @@
+# this version will try to use the DDP
 import json
 import csv
 
@@ -62,6 +63,7 @@ def save_result_data(
 
 def start_training(model_name, dataset_name, args):
     print(f"############ Start Training on {model_name} with {dataset_name} ############")
+
     train_args = args["Training"]
     dataset_args = args["Dataset"][dataset_name]
     model_args = args["Models"][model_name]
@@ -100,15 +102,21 @@ def start_training(model_name, dataset_name, args):
         dataset_args["get_parameters_from"] = dataset_args["processed_dir"]
 
     print(f"dataset num, train:{len(train_dataset)}, val:{len(validation_dataset)}, test:{len(test_dataset)}")
-
-    # get device
-    device = get_device(args=args)
+    
+    if torch.cuda.device_count() == 0:
+        print("Use the CPU.")
+        device = get_device()
+    elif True or torch.cuda.device_count() == 1:
+        print("Use the single GPU.")
+        device = get_device(args=args)
+    else:
+        print(f"Multiple calculating GPUs detected. Use multiple GPUs. Device count: {torch.cuda.device_count()}")
+        device = get_device(device_name="cuda")
 
     if load_path:
         checkpoint = torch.load(osp.join(load_path, "checkpoint.pt"))
         model = checkpoint["model"]
         model.load_state_dict(checkpoint["model_state_dict"])
-        model = model.to(device)
     else:
         # get model in dimension
         in_dim = train_dataset[0].x.shape[-1]
@@ -117,16 +125,19 @@ def start_training(model_name, dataset_name, args):
         if model_name in ("PNA", "ChemGNN"):
             model_args["conv_params"]["edge_dim"] = args["Process"]["edge"]["edge_feature"]  # import edge_dim from Process.edge.edge_feature
             deg = generate_deg(train_dataset).float()
-            deg = deg.to(device)
+            deg = None if deg is None else deg.to(device)
             model = getattr(models, model_name)(deg, in_dim, **model_args)
-            model = model.to(device)
-        elif model_name in "CGCNN":
-            model_args["conv_params"]["dim"] = args["Process"]["edge"]["edge_feature"]
-            model = getattr(models, model_name)(in_dim, **model_args)
-            model = model.to(device)
         else:
             model = getattr(models, model_name)(in_dim, **model_args)
-            model = model.to(device)
+
+    if True or torch.cuda.device_count() <= 1:
+        model = model.to(device)
+    else:
+        model = torch.nn.DataParallel(model)
+
+    # print("device", device)
+    # print("model device", model.device_ids)
+    # print("deg device:", deg.device)
 
     # set optimizer
     optimizer_args = model_args["optimizer"]
@@ -191,8 +202,7 @@ def start_training(model_name, dataset_name, args):
             test_eval_results = test_evaluations(model, test_loader, test_dataset, device)
             eval_results = test_eval_results
             test_loss = test_eval_results[0]
-            print(f"Final test loss is {test_loss}")
-            # eval_loss = test_loss
+            eval_loss = test_loss
 
         scheduler.step(val_loss)
         current_lr = optimizer.param_groups[0]["lr"]

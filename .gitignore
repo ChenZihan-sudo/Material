@@ -14,14 +14,14 @@ v1/
 !utils.py
 
 results/ChemGNN
-results/GCN
 results/PNA
-results/tune
+results/CGCNN
+results/GCN
 
 tune_results*/
 legacy*/
 
-*.out*
+*.out
 
 .ipynb_checkpoints/
 

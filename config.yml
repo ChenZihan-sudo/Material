@@ -1,16 +1,16 @@
 Default:
   absolute_work_dir: /home/catcolia/Material
-  device: cuda
+  device: cuda:0
   result_path: results
   tune_result_path: tune_results
   dataset_dir: dataset
 
-# Task
+# Tasks
 Process:
   raw_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/raw"
-  use_ase_atoms_raw_data: true
+  use_ase_atoms_raw_data: false
   processed_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/processed"
-  max_cutoff_distance: 9.0
+  max_cutoff_distance: 7.0
   max_cutoff_neighbors: 
   edge:
     normalization: true
@@ -31,12 +31,12 @@ Training:
     trainset_ratio: 0.8
     valset_ratio: 0.1
     testset_ratio: 0.1
-    seed: 1
+    seed: 114514
   data_loader:
     batch_size: 600
     num_workers: 2
-    seed: 1
-  save_best_model: true # get best model based on best test loss
+    seed: 1919810
+  save_best_model: true # get best model based on the best test loss
   # save_step: 2 # save results every save_step epochs
   save_result_on: "{{Default.absolute_work_dir}}/{{Default.result_path}}"
   # load model from a checkpoint file, empty (blank) here will train from begin
@@ -169,7 +169,7 @@ Models:
     num_layers: 1
     conv_out_dim: 100
     post_fc_dim: [100, 50]
-    dropout_rate: 0.1
+    dropout_rate: 0.10
     pool: "global_mean_pool"
     learning_rate: 0.02
     optimizer:
@@ -194,8 +194,8 @@ Models:
     pre_fc_dim: [100]
     num_layers: 1
     conv_out_dim: 100
-    post_fc_dim: [150, 150]
-    dropout_rate: 0.3
+    post_fc_dim: [100, 50]
+    dropout_rate: 0.1
     pool: "global_mean_pool"
     learning_rate: 0.01
     optimizer:
@@ -205,8 +205,29 @@ Models:
       name: ReduceLROnPlateau
       params:
         mode: min
-        factor: 0.8
-        patience: 30
+        factor: 0.85
+        patience: 10
+        min_lr: 0.00000001
+  CGCNN:
+    conv_params:
+      aggr: "mean"
+      # dim: "{{Process.edge.edge_feature}}" # deprecated, use Process.edge.edge_feature instead
+    pre_fc_dim: [100]
+    num_layers: 1
+    # * No conv_out_dim here, conv dimensions (channel) is the pre_fc_dim[-1] in CGCNN
+    post_fc_dim: [100, 50]
+    dropout_rate: 0.10
+    pool: "global_mean_pool"
+    learning_rate: 0.02
+    optimizer:
+      name: AdamW
+      params:
+    scheduler:
+      name: ReduceLROnPlateau
+      params:
+        mode: min
+        factor: 0.85
+        patience: 10
         min_lr: 0.00000001
   GCN:
     conv_params:

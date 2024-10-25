@@ -144,6 +144,8 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
             deg = deg.to(device)
             model = getattr(models, model_name)(deg, in_dim, **model_args)
             model = model.to(device)
+        elif model_name in "CGCNN":
+            model_args["conv_params"]["dim"] = args["Process"]["edge"]["edge_feature"]
         else:
             model = getattr(models, model_name)(in_dim, **model_args)
             model = model.to(device)
