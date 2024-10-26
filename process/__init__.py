@@ -1,5 +1,7 @@
 from .MPDataset import MPDataset
 from .MPDatasetLarge import MPDatasetLarge
+from .MPDatasetTernary import MPDatasetTernary
+from .MPDatasetAll import MPDatasetAll
 from .MPDatasetCeCoCuBased import MPDatasetCeCoCuBased
 
 from .HypoDataset import HypoDataset
@@ -11,6 +13,8 @@ __all__ = [
     "MPDataset",
     "MPDatasetLarge",
     "MPDatasetCeCoCuBased",
+    "MPDatasetTernary",
+    "MPDatasetAll",
     "HypoDataset",
     "OptimizedHypoDataset",
     "UnoptimizedHypoDataset",
@@ -34,11 +38,37 @@ def make_processed_filename(dataset_name: str, args: dict):
     p = args["Process"]
     name_prefix = args["Dataset"][dataset_name]["processed_dir"]
     name_postfix = (
-        "cut_" + str(p["max_cutoff_distance"]) + "_efeat_" + str(p["edge"]["edge_feature"]) + "_gwid_" + str(p["edge"]["gaussian_smearing"]["width"])
+        "dcut_"
+        + str("no" if p["max_cutoff_distance"] is None else p["max_cutoff_distance"])
+        + "_ncut_"
+        + str("no" if p["max_cutoff_neighbors"] is None else p["max_cutoff_neighbors"])
+        + "_tnorm_"
+        + str("no" if p["target_normalization"] is False else "yes")
+        + "_efeat_"
+        + str("1" if p["edge"]["normalization"] is False else p["edge"]["edge_feature"])
+        + "_gwid_"
+        + str("no" if p["edge"]["gaussian_smearing"]["enable"] is False else p["edge"]["gaussian_smearing"]["width"])
     )
     args["Dataset"][dataset_name]["processed_dir"] = name_prefix + "_" + name_postfix
-    print("Processed path: ", args["Dataset"][dataset_name]["processed_dir"])
+    print(f"Dataset auto naming: {name_postfix}")
     return args
+
+
+def process_dataset(
+    dataset_name: str,
+    args: dict,
+    **kwargs,
+):
+    import sys
+
+    if args["Process"]["auto_processed_name"] is True:
+        args = make_processed_filename(dataset_name, args)
+
+    processed_data_path = args["Dataset"][dataset_name]["processed_dir"]
+    dataset = getattr(sys.modules[__name__], dataset_name)(args)
+
+    print("Processed dataset path: ", processed_data_path)
+    return dataset, processed_data_path
 
 
 def make_dataset(
@@ -50,19 +80,11 @@ def make_dataset(
     seed=None,
     **kwargs,
 ):
-    # assert len(lengths) > 0 or (args is not None and seed is not None), "Provide split ratio(lengths) or config dict(args)"
-    import sys
+    dataset, processed_data_path = process_dataset(dataset_name, args)
 
-    if args["Process"]["auto_processed_name"] is True:
-        args = make_processed_filename(dataset_name, args)
-
-    processed_data_path = args["Dataset"][dataset_name]["processed_dir"]
-
-    dataset = getattr(sys.modules[__name__], dataset_name)(args)
     lengths = [trainset_ratio, valset_ratio, testset_ratio]
     train_dataset, validation_dataset, test_dataset = random_split_dataset(dataset, lengths=lengths, seed=seed)
 
-    print("Processed dataset path: ", processed_data_path)
     return train_dataset, validation_dataset, test_dataset, processed_data_path
 
 

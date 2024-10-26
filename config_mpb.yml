@@ -28,12 +28,12 @@ Process:
 Training:
   epochs: 1000
   dataset:
-    trainset_ratio: 0.6
-    valset_ratio: 0.2
-    testset_ratio: 0.2
+    trainset_ratio: 0.8
+    valset_ratio: 0.19
+    testset_ratio: 0.01
     seed: 114514
   data_loader:
-    batch_size: 600
+    batch_size: 100
     num_workers: 2
     seed: 1919810
   save_best_model: true # get best model based on the best test loss
@@ -110,36 +110,6 @@ Dataset:
     onehot_gen: false
     onehot_range: [1, 101]
     get_parameters_from: "{{Dataset.MPDataset.processed_dir}}"
-  MPDatasetTernary: # Material Project
-    raw_dir: "{{Process.raw_dir}}/mpt"
-    processed_dir: "{{Process.processed_dir}}/mpt"
-    download:
-      exclude_elements: []
-      include_elements:
-      api_key: j61NN3yuDh8tQWf0OrkachbbUoJ8npVP
-      chunk_size: 1000
-      num_elements: [3, 3]
-      num_chunks:
-      # keep the data sorting from a INDICES file
-      keep_data_from: 
-    onehot_gen: false
-    onehot_range: [1, 101]
-    get_parameters_from: "{{Dataset.MPDatasetTernary.processed_dir}}"
-  MPDatasetAll: # Material Project
-    raw_dir: "{{Process.raw_dir}}/mp"
-    processed_dir: "{{Process.processed_dir}}/mp"
-    download:
-      exclude_elements: []
-      include_elements:
-      api_key: j61NN3yuDh8tQWf0OrkachbbUoJ8npVP
-      chunk_size: 1000
-      num_elements: []
-      num_chunks:
-      # keep the data sorting from a INDICES file
-      keep_data_from:
-    onehot_gen: false
-    onehot_range: [1, 101]
-    get_parameters_from: "{{Dataset.MPDatasetAll.processed_dir}}" 
   MPDatasetLarge:
     processed_filename: CONFIG
     total_data_num: 41819

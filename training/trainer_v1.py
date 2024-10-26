@@ -15,7 +15,7 @@ from .prepare import *
 
 from models import *
 from utils import *
-from process import make_dataset, process_dataset
+from process import make_dataset
 
 import models
 
@@ -51,13 +51,13 @@ def save_result_data(
     # save results
     plot_training_progress(len(train_losses), train_losses, val_losses, test_losses, res_path=result_path, threshold=0.2)
     save_regression_result(out, y, result_path)
-    mae, r2 = plot_regression_result(regression_title, result_path, plotfilename="regression_figure.jpeg")
+    mae = plot_regression_result(regression_title, result_path, plotfilename="regression_figure.jpeg")
 
     # save model
     save_model(result_path, model, epoch, mae, optimizer, scheduler)
     print("-------------------------------------------")
 
-    return mae, r2
+    return mae
 
 
 def start_training(model_name, dataset_name, args):
@@ -93,17 +93,15 @@ def start_training(model_name, dataset_name, args):
     dataloader_args = train_args["data_loader"]
     train_loader, val_loader, test_loader = make_data_loader(train_dataset, validation_dataset, test_dataset, **dataloader_args)
 
-    # * new feature
+    # new feature
     from process import OptimizedHypoDataset
     from torch_geometric.loader import DataLoader
 
-    sample_dataset, _ = process_dataset("OptimizedHypoDataset", args)
-    test_dataset = sample_dataset
-
+    sample_dataset = OptimizedHypoDataset(args=args)
     batch_size = dataloader_args["batch_size"]
     num_workers = dataloader_args["num_workers"]
-    test_loader = DataLoader(test_dataset, shuffle=False, batch_size=batch_size, num_workers=num_workers)
-    print(f"sample_dataset:{test_dataset}, use sampled data as the testing dataset.")
+    val_loader = DataLoader(sample_dataset, shuffle=False, batch_size=batch_size, num_workers=num_workers)
+    print(f"sample_dataset:{sample_dataset}, use sampled data as the validating dataset.")
 
     # sync the processed data path if auto processed the dataset name
     if args["Process"]["auto_processed_name"] is True:
@@ -192,19 +190,19 @@ def start_training(model_name, dataset_name, args):
         model, train_loss = train_step(model, train_loader, train_dataset, optimizer, device)
         val_eval_results = test_evaluations(model, val_loader, validation_dataset, device)
         val_loss = val_eval_results[0]
-        test_eval_results = test_evaluations(model, test_loader, test_dataset, device)
-        test_loss = test_eval_results[0]
+        # test_eval_results = test_evaluations(model, test_loader, test_dataset, device)
+        # test_loss = test_eval_results[0]
 
         eval_results = val_eval_results
         eval_loss = val_loss
 
-        # test_loss = 0.0
-        # if epoch == epochs - 1:
-        #     test_eval_results = test_evaluations(model, test_loader, test_dataset, device)
-        #     eval_results = test_eval_results
-        #     test_loss = test_eval_results[0]
-        #     print(f"Final test loss is {test_loss}")
-        #     # eval_loss = test_loss
+        test_loss = 0.0
+        if epoch == epochs - 1:
+            test_eval_results = test_evaluations(model, test_loader, test_dataset, device)
+            eval_results = test_eval_results
+            test_loss = test_eval_results[0]
+            print(f"Final test loss is {test_loss}")
+            # eval_loss = test_loss
 
         scheduler.step(val_loss)
         current_lr = optimizer.param_groups[0]["lr"]
@@ -223,24 +221,6 @@ def start_training(model_name, dataset_name, args):
         if best_loss is None or eval_loss < best_loss:
             best_loss = eval_loss
             save_result_data(*save_params)
-
-            # * new feature
-            print("sample_opt_hypo-------------------------------------------")
-            _, s_out, s_y = test_eval_results
-            # Reverse normalization of out and y
-            if args["Process"]["target_normalization"]:
-                s_min, s_max = get_data_scale(args["Dataset"]["MPDatasetCeCoCuBased"]["get_parameters_from"])
-                s_y = reverse_min_max_scalar_1d(s_y, s_min, s_max)
-                s_out = reverse_min_max_scalar_1d(s_out, s_min, s_max)
-            save_regression_result(s_out, s_y, result_path, "sample_opt_hypo_regression_result.txt")
-            s_mae, s_r2 = plot_regression_result(
-                "Model regression",
-                result_path,
-                filename="sample_opt_hypo_regression_result.txt",
-                plotfilename="sample_opt_hypo_regression_figure.jpeg",
-                scope=[-2, 4, -2, 4],
-            )
-            print("sample_opt_hypo-------------------------------------------")
 
         progress_msg = f"epoch:{str(epoch)} train:{str(round(train_loss,4))} valid:{str(round(val_loss, 4))} test:{'-' if test_loss==0.0 else str(round(test_loss, 4))} lr:{str(round(current_lr, 8))} eval_best:{str(round(best_loss, 4))}"
         pbar.set_description(progress_msg)

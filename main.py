@@ -12,6 +12,7 @@ import yaml
 parser = argparse.ArgumentParser(description="")
 
 parser.add_argument(
+    "-C",
     "--config_path",
     default="config.yml",
     type=str,
@@ -108,7 +109,7 @@ if cmd_args.task == "Training":
 if cmd_args.task == "Process":
     import process
 
-    dataset = getattr(process, dataset)(config)
+    dataset, _ = process.process_dataset(dataset, config)
     print(f"dataset total length: {len(dataset)}")
 
 # analysis
