@@ -47,13 +47,13 @@ Training:
   # | true                   | false                | Save result data every epoch                            |
   # | false                  | true                 | Save best model only                                    |
   # | false                  | false                | Update and overwrite result data after each epoch       |
-  save_all_epoch_result: false # save all epoch result in the model folder
-  save_best_model_only: true  # only save the best model based on the best test loss
+  save_all_epoch_result: true # save all epoch result in the model folder
+  save_best_model_only: false  # only save the best model based on the best test loss
 
   # ignore test dataset evaluation to reduce training time
-  ignore_test_evaluation: true 
+  ignore_test_evaluation: false 
   # *- extra options: show hypothetic compounds prediction result
-  show_hypo_result: false
+  show_hypo_result: true 
 
   # load model from a checkpoint file, empty (blank) here will train from begin
   load_model_from: # example: "{{Default.absolute_work_dir}}/results/ChemGNN/1724537109002412"

@@ -107,30 +107,45 @@ class CEALConv(MessagePassing):
         if self.aggMLP:
             factor = aggMLP_factor
             self.mlp_w0 = Sequential(
-                torch.nn.Linear(self.F_in, self.F_in),
-                torch.nn.BatchNorm1d(self.F_in),
-                ReLU(),  # torch.nn.Linear(round(self.F_in * factor), self.F_in)
+                torch.nn.Linear(self.F_in, round(self.F_in * factor)), ReLU(), torch.nn.Linear(round(self.F_in * factor), self.F_in)
             )
             self.mlp_w1 = Sequential(
-                torch.nn.Linear(self.F_in, self.F_in),
-                torch.nn.BatchNorm1d(self.F_in),
-                ReLU(),  # torch.nn.Linear(round(self.F_in * factor), self.F_in)
+                torch.nn.Linear(self.F_in, round(self.F_in * factor)), ReLU(), torch.nn.Linear(round(self.F_in * factor), self.F_in)
             )
             self.mlp_w2 = Sequential(
-                torch.nn.Linear(self.F_in, self.F_in),
-                torch.nn.BatchNorm1d(self.F_in),
-                ReLU(),  # torch.nn.Linear(round(self.F_in * factor), self.F_in)
+                torch.nn.Linear(self.F_in, round(self.F_in * factor)), ReLU(), torch.nn.Linear(round(self.F_in * factor), self.F_in)
             )
             self.mlp_w3 = Sequential(
-                torch.nn.Linear(self.F_in, self.F_in),
-                torch.nn.BatchNorm1d(self.F_in),
-                ReLU(),  # torch.nn.Linear(round(self.F_in * factor), self.F_in)
+                torch.nn.Linear(self.F_in, round(self.F_in * factor)), ReLU(), torch.nn.Linear(round(self.F_in * factor), self.F_in)
             )
             self.mlp_w4 = Sequential(
-                torch.nn.Linear(self.F_in, self.F_in),
-                torch.nn.BatchNorm1d(self.F_in),
-                ReLU(),  # torch.nn.Linear(round(self.F_in * factor), self.F_in)
+                torch.nn.Linear(self.F_in, round(self.F_in * factor)), ReLU(), torch.nn.Linear(round(self.F_in * factor), self.F_in)
             )
+            # self.mlp_w0 = Sequential(
+            #     torch.nn.Linear(self.F_in, self.F_in),
+            #     torch.nn.BatchNorm1d(self.F_in),
+            #     ReLU(),  # torch.nn.Linear(round(self.F_in * factor), self.F_in)
+            # )
+            # self.mlp_w1 = Sequential(
+            #     torch.nn.Linear(self.F_in, self.F_in),
+            #     torch.nn.BatchNorm1d(self.F_in),
+            #     ReLU(),  # torch.nn.Linear(round(self.F_in * factor), self.F_in)
+            # )
+            # self.mlp_w2 = Sequential(
+            #     torch.nn.Linear(self.F_in, self.F_in),
+            #     torch.nn.BatchNorm1d(self.F_in),
+            #     ReLU(),  # torch.nn.Linear(round(self.F_in * factor), self.F_in)
+            # )
+            # self.mlp_w3 = Sequential(
+            #     torch.nn.Linear(self.F_in, self.F_in),
+            #     torch.nn.BatchNorm1d(self.F_in),
+            #     ReLU(),  # torch.nn.Linear(round(self.F_in * factor), self.F_in)
+            # )
+            # self.mlp_w4 = Sequential(
+            #     torch.nn.Linear(self.F_in, self.F_in),
+            #     torch.nn.BatchNorm1d(self.F_in),
+            #     ReLU(),  # torch.nn.Linear(round(self.F_in * factor), self.F_in)
+            # )
         else:
             self.agg_weights = torch.nn.Parameter(torch.rand(len(aggregators)))
 
@@ -154,15 +169,24 @@ class CEALConv(MessagePassing):
                 layer.reset_parameters()
         if self.aggMLP:
             self.mlp_w0[0].reset_parameters()
-            self.mlp_w0[1].reset_parameters()
+            # self.mlp_w0[1].reset_parameters()
+            self.mlp_w0[2].reset_parameters()
+            
             self.mlp_w1[0].reset_parameters()
-            self.mlp_w1[1].reset_parameters()
+            # self.mlp_w1[1].reset_parameters()
+            self.mlp_w1[2].reset_parameters()
+            
             self.mlp_w2[0].reset_parameters()
-            self.mlp_w2[1].reset_parameters()
+            # self.mlp_w2[1].reset_parameters()
+            self.mlp_w2[2].reset_parameters()
+            
             self.mlp_w3[0].reset_parameters()
-            self.mlp_w3[1].reset_parameters()
+            # self.mlp_w3[1].reset_parameters()
+            self.mlp_w3[2].reset_parameters()
+            
             self.mlp_w4[0].reset_parameters()
-            self.mlp_w4[1].reset_parameters()
+            # self.mlp_w4[1].reset_parameters()
+            self.mlp_w4[2].reset_parameters()
 
     """
     The forward method defines the framwork of a layer's logic.
