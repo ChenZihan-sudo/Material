@@ -8,6 +8,7 @@ from .HypoDataset import HypoDataset
 from .UnoptimizedHypoDataset import UnoptimizedHypoDataset
 from .OptimizedHypoDataset import OptimizedHypoDataset
 
+from .utils import make_processed_filename, get_parameter_file_path
 
 __all__ = [
     "MPDataset",
@@ -33,32 +34,8 @@ def random_split_dataset(dataset, lengths=None, seed=None):
     return train_dataset, validation_dataset, test_dataset
 
 
-# make processed file name based on the config parameters
-def make_processed_filename(dataset_name: str, args: dict):
-    p = args["Process"]
-    name_prefix = args["Dataset"][dataset_name]["processed_dir"]
-    name_postfix = (
-        "dcut_"
-        + str("no" if p["max_cutoff_distance"] is None else p["max_cutoff_distance"])
-        + "_ncut_"
-        + str("no" if p["max_cutoff_neighbors"] is None else p["max_cutoff_neighbors"])
-        + "_tnorm_"
-        + str("no" if p["target_normalization"] is False else "yes")
-        + "_efeat_"
-        + str("1" if p["edge"]["normalization"] is False else p["edge"]["edge_feature"])
-        + "_gwid_"
-        + str("no" if p["edge"]["gaussian_smearing"]["enable"] is False else p["edge"]["gaussian_smearing"]["width"])
-    )
-    args["Dataset"][dataset_name]["processed_dir"] = name_prefix + "_" + name_postfix
-    print(f"Dataset auto naming: {name_postfix}")
-    return args
-
-
-def process_dataset(
-    dataset_name: str,
-    args: dict,
-    **kwargs,
-):
+# use this method to deal with the auto named processed dataset path
+def process_dataset(dataset_name: str, args: dict, **kwargs):
     import sys
 
     if args["Process"]["auto_processed_name"] is True:
@@ -96,11 +73,13 @@ def delete_processed_data(processed_data_path: str):
     os.system(cmd_str)
 
 
-# The dataset occupy table is designed to avoid deleting a dataset,
-# where two more workers are paralleled but one is finished and one is still working.
-# We get the processed data folder name as the key.
-# When a worker starts to use it, the value + 1. When it is finished, the value - 1.
-# Every worker when they finished will check the value, if it's 0 the dataset will be deleted.
+# * Designed for tuning/tuner
+# - Background:       For tuning process, when a worker finished we need to delete the processed dataset to avoid disk full.
+# - What is this for: The dataset occupy table is designed to avoid deleting a dataset,
+#                     when two more workers are paralleled but one is finished and one is still working.
+# - How it work:      We get the processed data folder name as the key.
+#                     When a worker starts to use it, the value + 1. When it is finished, the value - 1.
+#                     Every worker when they finished will check the value, if it's 0 the dataset will be deleted.
 def create_dataset_occupy_table(path="dataset_occupy_table.pt", data_processed_path: str = None, increment: int = 0):
     import torch
 

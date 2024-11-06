@@ -27,10 +27,12 @@ def plot_training_progress(
     train_losses,
     val_losses,
     test_losses=None,  # Make test_losses optional
+    hypo_losses=None,  # Make test_losses optional
     title="Loss vs. Epoch during Training",
     res_path=None,
     filename="train_progress.jpeg",
     threshold=1,
+    **kwargs,
 ):
     import matplotlib.pyplot as plt
 
@@ -55,13 +57,18 @@ def plot_training_progress(
     plt.plot(range(1, epoch + 1, 1), val_losses, marker="s", linestyle="-", color="r", lw=lw, ms=ms)
 
     legend_entries = [
-        Line2D([0], [0], color="blue", label="train_loss (Blue)"),
-        Line2D([0], [0], color="red", label="validate_loss (Red)"),
+        Line2D([0], [0], color="blue", label="Train Loss (Blue)"),
+        Line2D([0], [0], color="red", label="Validate Loss (Red)"),
     ]
 
     if test_losses:  # Plot test_losses only if it is provided
         plt.plot(range(1, epoch + 1, 1), test_losses, marker="*", linestyle="-", color="g", lw=lw, ms=ms)
-        legend_entries.append(Line2D([0], [0], color="green", label="test_loss (Green)"))
+        legend_entries.append(Line2D([0], [0], color="green", label="Test Loss (Green)"))
+
+    # *- extra options
+    if hypo_losses:
+        plt.plot(range(1, epoch + 1, 1), hypo_losses, marker="*", linestyle="-", color="purple", lw=lw, ms=ms)
+        legend_entries.append(Line2D([0], [0], color="purple", label="Hypo Loss (Purple)"))
 
     plt.legend(handles=legend_entries, loc="upper right")
 
@@ -150,10 +157,9 @@ def tensor_min_max_scalar_1d(data, data_min=None, data_max=None, new_min=0.0, ne
 
 
 def get_data_scale(data_path):
-    filename = osp.join("{}".format(data_path), "PARAMETERS")
-    if not osp.exists(filename):
-        raise FileNotFoundError(filename, " not found.")
-    with open(filename) as f:
+    if not osp.exists(data_path):
+        raise FileNotFoundError(data_path, " not found.")
+    with open(data_path) as f:
         data = json.load(f)
     return float(data["data_min"]), float(data["data_max"])
 
@@ -205,11 +211,9 @@ def plot_regression_result(title, res_path, filename="regression_result.txt", pl
 
     # Calculate MAE
     mae = np.mean(np.abs(x - y))
-    print("MAE= ", mae)
 
     # Calculate R^2
     r2 = calculate_r_squared(y, x)
-    print("R^2= ", r2)
 
     density = get_density(x, y)
     max_d = round(np.max(density))

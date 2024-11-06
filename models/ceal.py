@@ -107,30 +107,40 @@ class CEALConv(MessagePassing):
         if self.aggMLP:
             factor = aggMLP_factor
             self.mlp_w0 = Sequential(
-                torch.nn.Linear(self.F_in, self.F_in), ReLU(), # torch.nn.Linear(round(self.F_in * factor), self.F_in)
+                torch.nn.Linear(self.F_in, self.F_in),
+                torch.nn.BatchNorm1d(self.F_in),
+                ReLU(),  # torch.nn.Linear(round(self.F_in * factor), self.F_in)
             )
             self.mlp_w1 = Sequential(
-                torch.nn.Linear(self.F_in, self.F_in), ReLU(), # torch.nn.Linear(round(self.F_in * factor), self.F_in)
+                torch.nn.Linear(self.F_in, self.F_in),
+                torch.nn.BatchNorm1d(self.F_in),
+                ReLU(),  # torch.nn.Linear(round(self.F_in * factor), self.F_in)
             )
             self.mlp_w2 = Sequential(
-                torch.nn.Linear(self.F_in, self.F_in), ReLU(), # torch.nn.Linear(round(self.F_in * factor), self.F_in)
+                torch.nn.Linear(self.F_in, self.F_in),
+                torch.nn.BatchNorm1d(self.F_in),
+                ReLU(),  # torch.nn.Linear(round(self.F_in * factor), self.F_in)
             )
             self.mlp_w3 = Sequential(
-                torch.nn.Linear(self.F_in, self.F_in), ReLU(), # torch.nn.Linear(round(self.F_in * factor), self.F_in)
+                torch.nn.Linear(self.F_in, self.F_in),
+                torch.nn.BatchNorm1d(self.F_in),
+                ReLU(),  # torch.nn.Linear(round(self.F_in * factor), self.F_in)
             )
             self.mlp_w4 = Sequential(
-                torch.nn.Linear(self.F_in, self.F_in), ReLU(), # torch.nn.Linear(round(self.F_in * factor), self.F_in)
+                torch.nn.Linear(self.F_in, self.F_in),
+                torch.nn.BatchNorm1d(self.F_in),
+                ReLU(),  # torch.nn.Linear(round(self.F_in * factor), self.F_in)
             )
         else:
             self.agg_weights = torch.nn.Parameter(torch.rand(len(aggregators)))
 
         """
-      Reset parameters
-       
-      It is typically used after creating an instance of a Graph Neural Network (GNN) model 
-      to ensure that the model's parameters are initialized in a consistent manner before 
-      training or inference.
-      """
+        Reset parameters
+        
+        It is typically used after creating an instance of a Graph Neural Network (GNN) model 
+        to ensure that the model's parameters are initialized in a consistent manner before 
+        training or inference.
+        """
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -144,21 +154,21 @@ class CEALConv(MessagePassing):
                 layer.reset_parameters()
         if self.aggMLP:
             self.mlp_w0[0].reset_parameters()
-            # self.mlp_w0[2].reset_parameters()
+            self.mlp_w0[1].reset_parameters()
             self.mlp_w1[0].reset_parameters()
-            # self.mlp_w1[2].reset_parameters()
+            self.mlp_w1[1].reset_parameters()
             self.mlp_w2[0].reset_parameters()
-            # self.mlp_w2[2].reset_parameters()
+            self.mlp_w2[1].reset_parameters()
             self.mlp_w3[0].reset_parameters()
-            # self.mlp_w3[2].reset_parameters()
+            self.mlp_w3[1].reset_parameters()
             self.mlp_w4[0].reset_parameters()
-            # self.mlp_w4[2].reset_parameters()
+            self.mlp_w4[1].reset_parameters()
 
     """
-   The forward method defines the framwork of a layer's logic.
-     Details of how messages are generated are in method message()
-     Details of how messages are aggregated are in method aggregate()
-     Details of how node embeddings are updated are in method update()
+    The forward method defines the framwork of a layer's logic.
+        Details of how messages are generated are in method message()
+        Details of how messages are aggregated are in method aggregate()
+        Details of how node embeddings are updated are in method update()
    """
 
     def forward(self, x, edge_index, batch, edge_attr=None):
@@ -185,10 +195,10 @@ class CEALConv(MessagePassing):
         return self.lin(out)
 
     """
-   The message() methods
-     1. Collects information from the constructor + kwargs in propagate. e.g x_j, edge_attr, size
-     2. Construct central node i's messages by using variables suffixed with _i, _j
-   """
+    The message() methods
+        1. Collects information from the constructor + kwargs in propagate. e.g x_j, edge_attr, size
+        2. Construct central node i's messages by using variables suffixed with _i, _j
+    """
 
     def message(self, x_i, x_j, edge_attr):
 

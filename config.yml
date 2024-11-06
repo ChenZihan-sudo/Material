@@ -5,10 +5,14 @@ Default:
   tune_result_path: tune_results
   dataset_dir: dataset
 
+
 # Tasks
 Process:
   raw_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/raw"
-  use_ase_atoms_raw_data: false
+  # this will convert raw data to the ase atoms and pack into a single file (partially effective) 
+  use_ase_atoms_raw_data: false 
+  # this would be helpful when raw data file is too many and easy to transfer
+  pack_raw_data: true 
   processed_dir: "{{Default.absolute_work_dir}}/{{Default.dataset_dir}}/processed"
   max_cutoff_distance: 7.0
   max_cutoff_neighbors: 
@@ -19,30 +23,43 @@ Process:
       enable: true
       # resolution: "{{Process.edge.edge_feature}}" # deprecated
       width: 0.2
-  # enable target normalization
-  target_normalization: true
-  # auto generate processed dataset name
-  auto_processed_name: true
+  target_normalization: true # target normalization
+  auto_processed_name: true  # auto naming processed dataset name
 
 # Task
 Training:
   epochs: 1000
   dataset:
-    trainset_ratio: 0.6
-    valset_ratio: 0.2
-    testset_ratio: 0.2
+    trainset_ratio: 0.8
+    valset_ratio: 0.1
+    testset_ratio: 0.1
     seed: 114514
   data_loader:
-    batch_size: 600
+    batch_size: 800
     num_workers: 2
     seed: 1919810
-  save_best_model: true # get best model based on the best test loss
-  # save_step: 2 # save results every save_step epochs
+
   save_result_on: "{{Default.absolute_work_dir}}/{{Default.result_path}}"
+
+  # | save_all_epoch_result  | save_best_model_only | Description                                             |
+  # |------------------------|----------------------|---------------------------------------------------------|
+  # | true                   | true                 | Save best model only                                    |
+  # | true                   | false                | Save result data every epoch                            |
+  # | false                  | true                 | Save best model only                                    |
+  # | false                  | false                | Update and overwrite result data after each epoch       |
+  save_all_epoch_result: false # save all epoch result in the model folder
+  save_best_model_only: true  # only save the best model based on the best test loss
+
+  # ignore test dataset evaluation to reduce training time
+  ignore_test_evaluation: true 
+  # *- extra options: show hypothetic compounds prediction result
+  show_hypo_result: false
+
   # load model from a checkpoint file, empty (blank) here will train from begin
-  load_model_from: # "{{Default.absolute_work_dir}}/results/ChemGNN/1724537109002412"
-  # resume training will restore all status and cover the original checkpoint file
-  resume_training: true
+  load_model_from: # example: "{{Default.absolute_work_dir}}/results/ChemGNN/1724537109002412"
+  # resume training will restore all model status and cover the original checkpoint file
+  resume_training: true # recover the training process, available when `load_model_from` is not empty
+
 
 # Task
 Tuning:
@@ -53,7 +70,7 @@ Tuning:
     valset_ratio: 0.1
     testset_ratio: 0.1
     seed: 1
-    # delete processed dataset after end of final epoch or reach `keep_best_epochs`
+    # delete processed dataset after the end of final epoch or reach the `keep_best_epochs`
     delete_after_completion: true
 
   data_loader:
@@ -75,10 +92,10 @@ Tuning:
   # set this according to your task and hardware resources
   max_concurrent_trials: 10
   resources:
-    num_cpus: 16 # total hardware cpu(thread) resources
-    num_gpus: 1 # total hardware gpu resources
-    trial_cpus: 8 # a trail uses trial_cpus=num_cpus/concurrent_trials if paralleled
-    trial_gpus: 0.5 # a trial uses trial_gpus=num_gpus/concurrent_trials if paralleled
+    num_cpus: 16     # total hardware cpu(thread) resources
+    num_gpus: 1      # total hardware gpu resources
+    trial_cpus: 8    # a trail uses trial_cpus=num_cpus/concurrent_trials if paralleled
+    trial_gpus: 0.5  # a trial uses trial_gpus=num_gpus/concurrent_trials if paralleled
 
   # the trial will end if the best model does not appear after the `keep_best_epochs` epochs,
   # the counter will reset to 0 when the best model appears
@@ -92,8 +109,28 @@ Tuning:
   # restore experiment from a experiment path, empty (blank) here will start training from begin
   restore_experiment_from: "{{Tuning.storage_path}}/ChemGNN_MPDatasetCeCoCuBased_2024-09-10_23-20-07"
 
-# Task
-# Analysis:
+
+# You can put the analysis arguments in here
+# Check analysis/__init__.py for detail information
+# Use case: python main.py -T="Analysis" --use_config
+Analysis:
+  # Task List for Choice
+  # model_prediction:             generate model prediction results from a dataset and save the results to the model path
+  # analyse_model_prediction:     analyse the model results, generate a distribution histogram
+  # dataset_target_distribution:  generate dataset target(formation energy) results and save the results to the dataset path. Analyse the target distribution, show it by a histogram.
+  # regression_analysis:          generate regression graph based on the dataset target result (x axis) and the model prediction result (y axis). Store the graph to the model path.
+  # sample_hypo_data:             sample the hypothesis compound data from the hypothesis dataset
+  config_path: config.yml                        # config file path (default: config.yml)
+  model_path: # results/ChemGNN/1730886600116378   # model path for inference (<model path>/checkpoint.pt)
+  dataset_name: # OptimizedHypoDataset             # dataset name in folder process/ 
+  batch_size: 100                                # batch size for running the task
+  generation: 1G                                 # the generation name tag of the model (default:1G)
+  postfix_epoch: ""                              # string, optional, set this if the model has the postfix epoch index (default: "")
+  sample_cutoff_value: -0.2                      # a sample of some compounds which prediction value less than the cutoff value
+  sample_ratio: 1.0                              # a random sample of some compounds in a ratio from the compounds that already cutoff
+  sample_seed: 114514                            # random sample seed for sample ratio
+  task: # analyse_model_prediction                 # task name 
+
 
 Dataset:
   MPDataset: # Material Project
@@ -105,11 +142,14 @@ Dataset:
       api_key: j61NN3yuDh8tQWf0OrkachbbUoJ8npVP
       chunk_size: 1000
       num_elements: [3, 3]
-      num_chunks:
-      keep_data_from: "{{Dataset.MPDataset.raw_dir}}/origin_INDICES" # keep the data sorting from the INDICES file
-    onehot_gen: false
-    onehot_range: [1, 101]
-    get_parameters_from: "{{Dataset.MPDataset.processed_dir}}"
+      num_chunks: 
+      # keep the data order from a INDICES file, 
+      # the other entries in this 'download' should have the same entries as the old dataset  
+      keep_data_from: "{{Dataset.MPDataset.raw_dir}}/origin_INDICES" 
+    onehot_gen: false      # get all atomic number set in the dataset as the one-hot range
+    onehot_range: [1, 101] # atomic number from 1 to 100
+    # file PARAMETER should be placed at {{Process.processed_dir}}/<dataset identifier name> to be located
+    get_parameters_from: MPDataset
   MPDatasetTernary: # Material Project
     raw_dir: "{{Process.raw_dir}}/mpt"
     processed_dir: "{{Process.processed_dir}}/mpt"
@@ -120,14 +160,16 @@ Dataset:
       chunk_size: 1000
       num_elements: [3, 3]
       num_chunks:
-      # keep the data sorting from a INDICES file
+      # keep the data order from a INDICES file, 
+      # the other entries in this 'download' should have the same entries as the old dataset  
       keep_data_from: 
-    onehot_gen: false
-    onehot_range: [1, 101]
-    get_parameters_from: "{{Dataset.MPDatasetTernary.processed_dir}}"
+    onehot_gen: false      # get all atomic number set in the dataset as the one-hot range
+    onehot_range: [1, 101] # atomic number from 1 to 100
+    # file PARAMETER should be placed at {{Process.processed_dir}}/<dataset identifier name> to be located
+    get_parameters_from: MPDatasetTernary
   MPDatasetAll: # Material Project
-    raw_dir: "{{Process.raw_dir}}/mp"
-    processed_dir: "{{Process.processed_dir}}/mp"
+    raw_dir: "{{Process.raw_dir}}/mpa"
+    processed_dir: "{{Process.processed_dir}}/mpa"
     download:
       exclude_elements: []
       include_elements:
@@ -135,16 +177,18 @@ Dataset:
       chunk_size: 1000
       num_elements: []
       num_chunks:
-      # keep the data sorting from a INDICES file
+      # keep the data order from a INDICES file, 
+      # the other entries in this 'download' should have the same entries as the old dataset  
       keep_data_from:
-    onehot_gen: false
-    onehot_range: [1, 101]
-    get_parameters_from: "{{Dataset.MPDatasetAll.processed_dir}}" 
+    onehot_gen: false      # get all atomic number set in the dataset as the one-hot range
+    onehot_range: [1, 101] # atomic number from 1 to 100
+    # file PARAMETER should be placed at {{Process.processed_dir}}/<dataset identifier name> to be located
+    get_parameters_from: MPDatasetAll 
   MPDatasetLarge:
     processed_filename: CONFIG
     total_data_num: 41819
     processed_dir: "{{Process.processed_dir}}/mpl"
-    get_parameters_from: "{{Dataset.MPDataset.processed_dir}}"
+    get_parameters_from: MPDataset
   MPDatasetCeCoCuBased:
     raw_dir: "{{Process.raw_dir}}/mpb"
     processed_dir: "{{Process.processed_dir}}/mpb"
@@ -155,33 +199,47 @@ Dataset:
       chunk_size: 1000
       num_elements: [3, 3]
       num_chunks:
-      keep_data_from: # keep the data sorting from the INDICES file
-    onehot_gen: false
-    onehot_range: [1, 101]
-    get_parameters_from: "{{Dataset.MPDatasetCeCoCuBased.processed_dir}}"
+      # keep the data order from a INDICES file, 
+      # the other entries in this 'download' should have the same entries as the old dataset  
+      keep_data_from: 
+    onehot_gen: false      # get all atomic number set in the dataset as the one-hot range
+    onehot_range: [1, 101] # atomic number from 1 to 100
+    # file PARAMETER should be placed at {{Process.processed_dir}}/<dataset identifier name> to be located
+    get_parameters_from: MPDatasetCeCoCuBased
   HypoDataset: # Unoptimized Hypothesis Compounds
     processed_dir: "{{Process.processed_dir}}/hypo"
-    scales: [0.96, 0.98, 1.00, 1.02, 1.04]
-    atomic_numbers: [58, 27, 29]
-    processed_filename: data # processed data filename
-    processed_ase_filename: ase_data
-    split_num: 20 # split the dataset into multiple data block
-    get_parameters_from: "{{Dataset.MPDataset.raw_dir}}"
+    scales: [0.96, 0.98, 1.00, 1.02, 1.04] # the scale factors you want to scale the volume of a crystal
+    atomic_numbers: [58, 27, 29]           # the atomic numbers you want to substitute
+    processed_filename: data               # prefix name, processed data filename
+    processed_vasp_filename: vasp_data     # prefix name, processed vasp format data filename
+    # hypothetic compounds file is too many, so we split the dataset into multiple data block
+    split_num: 20
+    # file PARAMETER should be placed at {{Process.processed_dir}}/<dataset identifier name> to be located
+    get_parameters_from: MPDatasetAll # this should be a dataset used for training a model 
   UnoptimizedHypoDataset: # Unoptimized Hypothesis Compounds (Sampled)
+    # sample_identifier: 1G_sample
     raw_dir: "{{Process.raw_dir}}/sample_unopt_hypo"
     processed_dir: "{{Process.processed_dir}}/sample_unopt_hypo"
-    onehot_range: [1, 101]
+    onehot_range: [1, 101] # atomic number from 1 to 100
     total_num: 4542
-    get_parameters_from: "{{Dataset.MPDataset.raw_dir}}"
+    # file PARAMETER should be placed at {{Process.processed_dir}}/<dataset identifier name> to be located
+    get_parameters_from: MPDataset # this should be a dataset used for training a model 
   OptimizedHypoDataset: # Optimized Hypothesis Compounds (Sampled)
+    # sample_identifier: 1G_sample
     raw_dir: "{{Process.raw_dir}}/sample_opt_hypo"
     processed_dir: "{{Process.processed_dir}}/sample_opt_hypo"
-    onehot_range: [1, 101]
-    total_num: 4542
-    formation_energy_filename: FORMATION_ENERGY_
-    compound_filename: POSCAR_
-    inherit_parameters_from: "{{Dataset.MPDataset.raw_dir}}"
-    get_parameters_from: "{{Dataset.OptimizedHypoDataset.inherit_parameters_from}}"
+    onehot_range: [1, 101] # atomic number from 1 to 100
+    # how many compounds you planed in this dataset (begin from 1,2,...,N, so N is the total_num)
+    total_num: 4542 # don't warry about the file missing in your sequence, we will check that :)
+    formation_energy_filename: FORMATION_ENERGY_ # prefix name, (i.e. FORMATION_ENERGY_1, FORMATION_ENERGY_2, ...)
+    compound_filename: POSCAR_                   # prefix name, (i.e. POSCAR_1, POSCAR_2, ...)
+    # we need scale the data range from other processed dataset when processing
+    # so the processed dataset file is specific to that processed dataset, (i.e., that model)
+    # ! you may need to delete the processed dataset file when you use the other dataset parameters file
+    inherit_parameters_from: MPDataset  # this should be a dataset used for training a model 
+    # file PARAMETER should be placed at {{Process.processed_dir}}/<dataset identifier name> to be located
+    get_parameters_from: OptimizedHypoDataset  # do not modify this unless you know what you are doing 
+
 
 Models:
   ChemGNN:
@@ -193,11 +251,11 @@ Models:
       pre_layers: 1
       post_layers: 1
       divide_input: false
-      aggMLP: false
+      aggMLP: true
       aggMLP_factor: 0.5
     pre_fc_dim: [50]
     num_layers: 1
-    conv_out_dim: 50
+    conv_out_dim: 70
     post_fc_dim: [50]
     dropout_rate: 0.1
     pool: "global_mean_pool"

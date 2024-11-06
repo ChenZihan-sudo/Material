@@ -43,6 +43,8 @@ parser.add_argument(
     required=False,
 )
 
+parser.add_argument("--use_config", action="store_true", help="", required=False)
+
 # Process, Training, Tuning, Analysis
 parser.add_argument("-T", "--task", default="Training", type=str, help="task name (Process, Training, Tuning and TuningAnalysis)", required=True)
 
@@ -57,7 +59,7 @@ for i, d in enumerate(cmd_args):
         e = i
 extra_cmd_args = cmd_args[b + 1 : e]
 print("cmd_args", cmd_args[: b if tag else len(cmd_args)])
-print("extra_cmd_args", extra_cmd_args)
+# print("extra_cmd_args", extra_cmd_args)
 cmd_args = parser.parse_args(cmd_args[: b if tag else len(cmd_args)])
 
 
@@ -116,7 +118,15 @@ if cmd_args.task == "Process":
 if cmd_args.task == "Analysis":
     import analysis
 
-    analysis.manager(config, extra_cmd_args)
+    if cmd_args.use_config is True:
+        extra_cmd_args = config["Analysis"]
+        print("extra_cmd_args", extra_cmd_args)
+        analysis.manager(config, extra_cmd_args, use_config=True)
+    
+    if cmd_args.use_config is False:
+        print("extra_cmd_args", extra_cmd_args)
+        analysis.manager(config, extra_cmd_args)
+
 
 # tuning
 if cmd_args.task == "Tuning":

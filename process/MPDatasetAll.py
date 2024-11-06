@@ -87,26 +87,62 @@ def download_raw_data(
 
 
 # Preprocess the raw data and store them in {DATASET_MP_RAW_DIR}
-def raw_data_preprocess(dest_dir, raw_datasets):
+def raw_data_preprocess(args, dest_dir, raw_datasets):
     indices = []
     pbar = tqdm(total=len(raw_datasets))
     pbar.set_description("to conventional")
-    for i, d in enumerate(raw_datasets):
-        # Path where the poscar file is created. (e.g. {DATASET_MP_RAW_DIR}/CONFIG_1.poscar)
-        filename = osp.join(dest_dir, "CONFIG_" + str(i + 1) + ".poscar")
-        # filename = osp.join(dest_dir, "CONFIG_" + str(i + 1) + ".cif")
-        d.structure = d.structure.to_conventional()
-        d.structure.to_file(filename=filename, fmt="poscar")
-        # d.structure.to_file(filename=filename, fmt="cif")
 
-        indices.append(
-            {
-                "idx": i + 1,
-                "mid": str(d.material_id),
-                "formation_energy_per_atom": d.formation_energy_per_atom,
-            }
-        )
-        pbar.update(1)
+    p_args = args["Process"]
+
+    if p_args["pack_raw_data"] is True:
+        raw_data_list = []
+        for i, d in enumerate(raw_datasets):
+            filename = osp.join(dest_dir, "raw_data.pt")
+
+            try:
+                d.structure = d.structure.to_conventional()
+            except Exception as e:
+                print(f"error during data preprocess, skip this compound, error msg: {e}")
+                print(f"idx: {i+1} compound: {d.structure}")
+                continue
+
+            poscar_data = d.structure.to(fmt="poscar")
+            poscar = (i, poscar_data)
+            raw_data_list.append(poscar)
+
+            indices.append(
+                {
+                    "idx": i + 1,
+                    "mid": str(d.material_id),
+                    "formation_energy_per_atom": d.formation_energy_per_atom,
+                }
+            )
+            pbar.update(1)
+        print(f"total data length: {len(raw_data_list)}")
+        torch.save(raw_data_list, filename)
+        raw_data_list = []
+    else:
+        for i, d in enumerate(raw_datasets):
+            # Path where the poscar file is created. (e.g. {DATASET_MP_RAW_DIR}/CONFIG_1.poscar)
+            filename = osp.join(dest_dir, "CONFIG_" + str(i + 1) + ".poscar")
+
+            try:
+                d.structure = d.structure.to_conventional()
+            except Exception as e:
+                print(f"error during data preprocess, skip this compound, error msg: {e}")
+                print(f"idx: {i+1} compound: {d.structure}")
+                continue
+
+            d.structure.to_file(filename=filename, fmt="poscar")
+
+            indices.append(
+                {
+                    "idx": i + 1,
+                    "mid": str(d.material_id),
+                    "formation_energy_per_atom": d.formation_energy_per_atom,
+                }
+            )
+            pbar.update(1)
     pbar.close()
 
     # Path where the indices csv file is created. (i.e. {DATASET_MP_RAW_DIR}/INDICE)
@@ -118,7 +154,7 @@ def raw_data_preprocess(dest_dir, raw_datasets):
 
 
 # Process one compound data
-def read_one_compound_info(args, compound_data, max_cutoff_distance, max_cutoff_neighbors=None, ase_atom=None) -> Data:
+def read_one_compound_info(args, compound_data, max_cutoff_distance, max_cutoff_neighbors=None, raw_data=None) -> Data:
     d_args = args["Dataset"][module_filename]
 
     data = Data()
@@ -127,12 +163,15 @@ def read_one_compound_info(args, compound_data, max_cutoff_distance, max_cutoff_
     data.mid = mid
     data.idx = idx
 
-    if ase_atom is None:
+    if raw_data is None:
         filename = osp.join("{}".format(d_args["raw_dir"]), "CONFIG_" + idx + ".poscar")
         compound = ase_read(filename, format="vasp")
     else:
-        compound = ase_atom
-
+        filename = io.StringIO(raw_data[1])
+        filename.seek(0)
+        compound = ase_read(filename, format="vasp")
+        filename.close()
+    
     # get distance matrix
     distance_matrix = compound.get_all_distances(mic=True)
 
@@ -191,38 +230,21 @@ def raw_data_process(args, onehot_gen=False, onehot_range: list = None) -> list:
     max_cutoff_distance = p_args["max_cutoff_distance"]
     max_cutoff_neighbors = p_args["max_cutoff_neighbors"]
 
-    # read raw data from ase atoms raw data
-    if p_args["use_ase_atoms_raw_data"] is True:
-        ase_atoms_list = []
-        save_path = osp.join("{}".format(d_args["raw_dir"]), "ase_atoms_data.pt")
+    if p_args["pack_raw_data"] is True:
+        raw_data_path = osp.join(d_args["raw_dir"], "raw_data.pt")
+        raw_data_list = torch.load(raw_data_path)
 
-        if not osp.exists(save_path):
-            print("Processing raw files to the ase atoms block file...")
-            for i, d in enumerate(indices):
-                idx, mid, y = d
-                filename = osp.join("{}".format(d_args["raw_dir"]), f"CONFIG_{idx}.poscar")
-                compound = ase_read(filename, format="vasp")
-                ase_atoms_list.append(compound)
-
-            torch.save(ase_atoms_list, save_path)
-        else:
-            ase_atoms_list = torch.load(save_path)
-
-        for i, d, ase_atom in zip(range(len(indices)), indices, ase_atoms_list):
-            # d: one item in indices (e.g. i=0, d=['1', 'mp-861724', '-0.41328523750000556'])
-            data = read_one_compound_info(args, d, max_cutoff_distance, max_cutoff_neighbors, ase_atom)
+        for i, d, raw_data in zip(range(len(indices)), indices, raw_data_list):
+            data = read_one_compound_info(args, d, max_cutoff_distance, max_cutoff_neighbors, raw_data)
 
             if onehot_gen is True:
                 for a in data.atomic_numbers:
                     atomic_number_set.add(a)
 
-            # if i == 2000:
-            #     break
             data_list.append(data)
             pbar.update(1)
         pbar.close()
-
-    else:  # else read raw data from the single file
+    else:
         for i, d in enumerate(indices):
             # d: one item in indices (e.g. i=0, d=['1', 'mp-861724', '-0.41328523750000556'])
             data = read_one_compound_info(args, d, max_cutoff_distance, max_cutoff_neighbors)
@@ -269,12 +291,12 @@ def raw_data_process(args, onehot_gen=False, onehot_range: list = None) -> list:
     for i, d in enumerate(data_list):
         d.y = torch.Tensor(np.array([y_list[i]], dtype=np.float32))
 
-    # write parameters into {DATASET_MP_RAW_DIR}/PARAMETERS
+    # write parameters into <processed_dir>/PARAMETERS
     atomic_numbers = list(atomic_number_set)
     atomic_numbers.sort()
     atomic_numbers = [int(a) for a in atomic_numbers]
     parameter = {"data_min": data_min, "data_max": data_max, "onehot_set": atomic_numbers}
-    # Path where the indices csv file is created. (i.e. {DATASET_MP_RAW_DIR}/PARAMETERS)
+    # Path where the indices csv file is created. (i.e. <processed_dir>/PARAMETERS)
     filename = osp.join(d_args["processed_dir"], "PARAMETERS")
     with open(filename, "w") as f:
         json.dump(parameter, f)
@@ -323,7 +345,7 @@ class MPDatasetAll(InMemoryDataset):
     def download(self):
         print("Downloading raw dataset...")
         raw_data = download_raw_data(**(self.d_args["download"]))
-        raw_data_preprocess(self.raw_dir, raw_data)
+        raw_data_preprocess(self.args, self.raw_dir, raw_data)
 
     def process(self):
         data_list = raw_data_process(self.args, onehot_gen=self.d_args["onehot_gen"], onehot_range=self.d_args["onehot_range"])

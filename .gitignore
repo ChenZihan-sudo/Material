@@ -10,6 +10,8 @@ v1/
 /*.ipynb
 /*.py
 /*.csv
+/*.pt
+/*.zip
 !main.py
 !utils.py
 

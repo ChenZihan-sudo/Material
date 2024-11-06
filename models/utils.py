@@ -3,6 +3,7 @@ def save_model(res_path, model=None, epoch=None, loss=None, optimizer=None, sche
     from os import path as osp
 
     save_path = osp.join(res_path, model_filename)
+    
     object = (
         {
             "epoch": epoch,

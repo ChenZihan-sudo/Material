@@ -19,6 +19,7 @@ from ray.tune.search import ConcurrencyLimiter
 from ray.tune.schedulers import ASHAScheduler
 
 import models
+import process
 
 from datetime import datetime
 from functools import partial
@@ -46,7 +47,8 @@ def save_result_data(
 
     # Reverse normalization of out and y
     if args["Process"]["target_normalization"]:
-        min, max = get_data_scale(dataset_args["get_parameters_from"])
+        data_path = process.get_parameter_file_path(dataset_args["get_parameters_from"], args)
+        min, max = get_data_scale(data_path)
         y = reverse_min_max_scalar_1d(y, min, max)
         out = reverse_min_max_scalar_1d(out, min, max)
 
@@ -113,9 +115,9 @@ def trainable_model(load_args, args=None, dataset=None, model_name=None, dataset
 
     # sync the processed data path
     if args["Process"]["auto_processed_name"] is True:
-        args["Dataset"][dataset_name]["processed_dir"] = data_processed_path
+        # args["Dataset"][dataset_name]["processed_dir"] = data_processed_path
         dataset_args["processed_dir"] = data_processed_path
-        dataset_args["get_parameters_from"] = dataset_args["processed_dir"]
+        # dataset_args["get_parameters_from"] = dataset_args["processed_dir"]
 
     # patch: add identifier to delete datasets at a proper time
     create_dataset_occupy_table(osp.join(args["Default"]["absolute_work_dir"], "tuning/dataset_occupy_table.pt"), data_processed_path, 1)

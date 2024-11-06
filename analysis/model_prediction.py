@@ -28,17 +28,22 @@ def predict_step(model, data, data_length, device):
     return res_out, idx_out
 
 
-def model_prediction(config, model_path, batch_size, dataset_name, generation, **kwargs):
+def model_prediction(config, model_path, batch_size, dataset_name, generation, postfix_epoch, **kwargs):
     import process
     from torch_geometric.loader import DataLoader
     from models.utils import load_model
     from utils import get_device, get_data_scale, reverse_min_max_scalar_1d
 
-    dataset = getattr(process, dataset_name)(config)
+    dataset, _ = process.process_dataset(dataset_name, config)
     dataset_args = config["Dataset"][dataset_name]
 
     device = get_device(args=config)
-    model, _ = load_model(model_path, file_name="checkpoint.pt", load_dict=True, map_location=device)
+    model, _ = load_model(
+        model_path,
+        file_name=f"checkpoint{"" if postfix_epoch == "" else f'_{postfix_epoch}'}.pt",
+        load_dict=True,
+        map_location=device,
+    )
 
     full_out = torch.zeros(0).to(device)
     idx_out = torch.zeros(0).to(device)
@@ -73,65 +78,27 @@ def model_prediction(config, model_path, batch_size, dataset_name, generation, *
 
     # reverse data scale
     if config["Process"]["target_normalization"]:
-        min, max = get_data_scale(dataset_args["get_parameters_from"])
+        data_path = process.get_parameter_file_path(dataset_args["get_parameters_from"], config)
+        min, max = get_data_scale(data_path)
         print(f"data scale: {min}, {max}")
         get_out = reverse_min_max_scalar_1d(full_out, min, max)
     else:
         get_out = full_out
     print(f"data nums: {len(get_out)}")
 
-    predicts_path = osp.join(model_path, f"{generation}_{dataset_name}_predict.pt")
+    predicts_path = osp.join(model_path, f"{generation}_{dataset_name}_predict{"" if postfix_epoch == "" else f'_{postfix_epoch}'}.pt")
     torch.save((get_out, idx_out), predicts_path)
     print("data saved on", predicts_path)
 
-
-def analyse_model_prediction(config, model_path, batch_size, dataset_name, generation, **kwargs):
-    import matplotlib.pyplot as plt
-    import numpy as np
+def get_model_prediction(config, model_path, batch_size, dataset_name, generation, postfix_epoch, **kwargs):
     import torch
-
-    model_pred_path = osp.join(model_path, f"{generation}_{dataset_name}_predict.pt")
+    from os import path as osp
+    
+    model_pred_path = osp.join(model_path, f"{generation}_{dataset_name}_predict{"" if postfix_epoch == "" else f'_{postfix_epoch}'}.pt")
     if not osp.exists(model_pred_path):
         print(f"File {model_pred_path} not exists. Try to generate the model prediction result...")
-        model_prediction(config, model_path, batch_size, dataset_name, generation)
+        model_prediction(config, model_path, batch_size, dataset_name, generation, postfix_epoch)
 
-    get_out, idx_out = torch.load(osp.join(model_path, f"{generation}_{dataset_name}_predict.pt"))
+    pred_out, idx_out = torch.load(osp.join(model_path, f"{generation}_{dataset_name}_predict{"" if postfix_epoch == "" else f'_{postfix_epoch}'}.pt"))
 
-    # show results
-    counts, bins = np.histogram(get_out.to("cpu"), bins=50, range=[-1, 5])
-    bin_centers = (bins[:-1] + bins[1:]) / 2
-    width = 0.8 * (bins[1] - bins[0])
-    # print(bin_centers, counts)
-    plt.figure(figsize=(7, 5))
-    plt.title(f"Formation Energy Distribution on {generation} Model with {dataset_name}")
-    plt.xlabel("Formation energy (ev/atom)")
-    plt.ylabel("Number of count")
-    plt.bar(bin_centers, height=counts, width=width)
-
-    get_out_np = get_out.to("cpu").numpy()
-    info = (
-        f"total: {len(get_out_np)}\nEf<0: {len(get_out_np[get_out_np < 0.0])}\nEf<-0.2: {len(get_out_np[get_out_np < -0.2])}\nEf>0: {len(get_out_np[get_out_np > 0])}\n"
-        + f"ratio of Ef<0: {round(len(get_out_np[get_out_np < 0.0]) / len(get_out_np),6)}\n"
-        + f"ratio of Ef<-0.2: {round(len(get_out_np[get_out_np < -0.2]) / len(get_out_np),6)}"
-    )
-    print(info)
-
-    # print("total:", len(get_out_np))
-    # print("Ef<0:", len(get_out_np[get_out_np < 0.0]))
-    # print("Ef<-0.2:", len(get_out_np[get_out_np < -0.2]))
-    # print("Ef>0:", len(get_out_np[get_out_np > 0.0]))
-    # print("ratio of Ef<0 ", len(get_out_np[get_out_np < 0.0]) / len(get_out_np))
-    # print("ratio of Ef<-0.2 ", len(get_out_np[get_out_np < -0.2]) / len(get_out_np))
-
-    ax = plt.gca()
-    xlim = ax.get_xlim()
-    ylim = ax.get_ylim()
-    x_offset = (xlim[1] - xlim[0]) * 0.05
-    y_offset = (ylim[1] - ylim[0]) * 0.05
-
-    plt.text(xlim[1] - x_offset, ylim[1] - y_offset, info, fontsize=12, color="black", horizontalalignment="right", verticalalignment="top")
-    file_path = osp.join(model_path, f"{generation}_{dataset_name}_predict_distribution.png")
-    plt.savefig(fname=file_path)
-
-    print(f"{generation} predict distribution saved on ", file_path)
-    return get_out_np
+    return pred_out, idx_out

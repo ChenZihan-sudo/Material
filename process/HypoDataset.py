@@ -259,7 +259,7 @@ def make_hypothesis_compounds_dataset(args, split_num=10):
             torch.save(data_list, file_path)
 
             # ase data file
-            ase_file_path = osp.join(data_dir, f"{d_args['processed_ase_filename']}_{str(save_track)}.pt")
+            ase_file_path = osp.join(data_dir, f"{d_args['processed_vasp_filename']}_{str(save_track)}.pt")
             torch.save(atom_data_list, ase_file_path)
 
             print("Saved data length:", len(data_list))
@@ -311,8 +311,8 @@ class HypoDataset(Dataset):
     def len(self):
         return len(self.processed_file_names)
 
-    def get(self, idx, get_ase_data=False):
+    def get(self, idx, get_vasp_data=False):
         data = torch.load(osp.join(self.processed_dir, f"{self.d_args['processed_filename']}_{idx+1}.pt"))
-        if get_ase_data is True:
-            data = torch.load(osp.join(self.processed_dir, f"{self.d_args['processed_ase_filename']}_{idx+1}.pt"))
+        if get_vasp_data is True:
+            data = torch.load(osp.join(self.processed_dir, f"{self.d_args['processed_vasp_filename']}_{idx+1}.pt"))
         return data

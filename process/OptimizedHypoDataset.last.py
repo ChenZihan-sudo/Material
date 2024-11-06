@@ -17,7 +17,6 @@ from torch.utils.data import random_split, Subset
 from typing import Sequence
 
 from utils import *
-from .utils import get_parameter_file_path
 
 module_filename = __name__.split(".")[-1]
 
@@ -86,7 +85,6 @@ def raw_data_process(args, onehot_range: list = None) -> list:
 
         exist = False
         if not osp.exists(formation_energy_data_path):
-            print(f"Formation energy file not exist: {formation_energy_data_path}")
             continue
 
         with open(formation_energy_data_path, "r") as file:
@@ -97,8 +95,7 @@ def raw_data_process(args, onehot_range: list = None) -> list:
             except:
                 print("Failed to load ", formation_energy_data_path)
         # print(res)
-        if not exist or not osp.exists(compound_data_path):
-            print(f"Compound poscar file not exist {compound_data_path}")
+        if not exist or res > 5.0 or not osp.exists(compound_data_path):
             continue
 
         total_valid += 1
@@ -138,14 +135,13 @@ def raw_data_process(args, onehot_range: list = None) -> list:
     y_list = torch.tensor([data_list[i].y for i in range(len(data_list))])
     data_min, data_max = 0.0, 1.0
     if p_args["target_normalization"]:
-        data_path = get_parameter_file_path(d_args["inherit_parameters_from"], args)
-        data_min, data_max = get_data_scale(data_path)
+        data_min, data_max = get_data_scale(d_args["inherit_parameters_from"])
         print(f"get data scale from the inherit paramters, min:{data_min} max:{data_max}")
         y_list, data_min, data_max = tensor_min_max_scalar_1d(y_list, data_min=data_min, data_max=data_max)
     for i, d in enumerate(data_list):
         d.y = torch.Tensor(np.array([y_list[i]], dtype=np.float32))
 
-    # * indicate the inherit path in the PARAMETERS
+    # * write to the PARAMETERS indicate the inherit path
     # write parameters into <processed_dir>/PARAMETERS
     if d_args["inherit_parameters_from"] is not None:
         atomic_numbers = list(atomic_number_set)

@@ -2,7 +2,7 @@
 # show it by a histogram
 
 
-def dataset_target_distribution(config, model_path, batch_size, dataset_name, generation, **kwargs):
+def dataset_target_distribution(config, model_path, batch_size, dataset_name, generation, postfix_epoch, **kwargs):
     import torch
     import process
     import numpy as np
@@ -10,10 +10,11 @@ def dataset_target_distribution(config, model_path, batch_size, dataset_name, ge
     import matplotlib.pyplot as plt
     from utils import reverse_min_max_scalar_1d, get_data_scale
 
-    dataset = getattr(process, dataset_name)(config)
+    dataset, _ = process.process_dataset(dataset_name, config)
     dataset_args = config["Dataset"][dataset_name]
     processed_path = dataset_args["processed_dir"]
-
+    print(processed_path)
+    
     if "y" not in dataset[0]:
         print(f"{dataset_name} don't have a target (y, formation energy)")
         return
@@ -24,7 +25,8 @@ def dataset_target_distribution(config, model_path, batch_size, dataset_name, ge
 
     # reverse data target presentation
     if config["Process"]["target_normalization"]:
-        data_min, data_max = get_data_scale(dataset_args["get_parameters_from"])
+        data_path = process.get_parameter_file_path(dataset_args["get_parameters_from"], config)
+        data_min, data_max = get_data_scale(data_path)
         results = reverse_min_max_scalar_1d(results, data_min, data_max)
 
     # save dataset target data
@@ -32,7 +34,7 @@ def dataset_target_distribution(config, model_path, batch_size, dataset_name, ge
 
     # show results
     get_out = results
-    counts, bins = np.histogram(get_out.to("cpu"), bins=50)
+    counts, bins = np.histogram(get_out.to("cpu"), bins=100)
     bin_centers = (bins[:-1] + bins[1:]) / 2
     width = 0.8 * (bins[1] - bins[0])
 

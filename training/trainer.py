@@ -18,6 +18,7 @@ from utils import *
 from process import make_dataset, process_dataset
 
 import models
+import process
 
 
 def save_result_data(
@@ -31,6 +32,7 @@ def save_result_data(
     train_losses,
     val_losses,
     test_losses=None,
+    hypo_losses=None,
     eval_results=None,
     regression_title="Model Regression",
 ):
@@ -42,20 +44,32 @@ def save_result_data(
 
     # Reverse normalization of out and y
     if args["Process"]["target_normalization"]:
-        # print(args)
-        # print(dataset_args["get_parameters_from"])
-        min, max = get_data_scale(dataset_args["get_parameters_from"])
+        data_path = process.get_parameter_file_path(dataset_args["get_parameters_from"], args)
+        min, max = get_data_scale(data_path)
         y = reverse_min_max_scalar_1d(y, min, max)
         out = reverse_min_max_scalar_1d(out, min, max)
 
     # save results
-    plot_training_progress(len(train_losses), train_losses, val_losses, test_losses, res_path=result_path, threshold=0.2)
-    save_regression_result(out, y, result_path)
-    mae, r2 = plot_regression_result(regression_title, result_path, plotfilename="regression_figure.jpeg")
+    if args["Training"]["ignore_test_evaluation"] is True:
+        test_losses = None
+    # *- extra options: show hypo result
+    if args["Training"]["show_hypo_result"] is False:
+        hypo_losses = None
+    plot_training_progress(len(train_losses), train_losses, val_losses, test_losses, hypo_losses, res_path=result_path, threshold=0.2)
 
+    postfix_epoch = f"_{epoch}" if args["Training"]["save_all_epoch_result"] is True and args["Training"]["save_best_model_only"] is False else ""
+    # save regression result
+    save_regression_result(out, y, result_path, filename=f"regression_result{postfix_epoch}.txt")
+    mae, r2 = plot_regression_result(
+        regression_title, result_path, filename=f"regression_result{postfix_epoch}.txt", plotfilename=f"regression_figure{postfix_epoch}.jpeg"
+    )
+    print(f"MAE={mae}")
+    print(f"R^2={r2}")
     # save model
-    save_model(result_path, model, epoch, mae, optimizer, scheduler)
-    print("-------------------------------------------")
+    save_model(result_path, model, epoch, mae, optimizer, scheduler, model_filename=f"checkpoint{postfix_epoch}.pt")
+    # *- extra options: show hypo result
+    if args["Training"]["show_hypo_result"] is False:
+        print("-------------------------------------------\n")
 
     return mae, r2
 
@@ -66,6 +80,7 @@ def start_training(model_name, dataset_name, args):
     dataset_args = args["Dataset"][dataset_name]
     model_args = args["Models"][model_name]
 
+    # set up for loading the model
     load_path = train_args["load_model_from"]
     if load_path is not None:
         # replace the parameters
@@ -93,23 +108,19 @@ def start_training(model_name, dataset_name, args):
     dataloader_args = train_args["data_loader"]
     train_loader, val_loader, test_loader = make_data_loader(train_dataset, validation_dataset, test_dataset, **dataloader_args)
 
-    # * new feature
-    from process import OptimizedHypoDataset
-    from torch_geometric.loader import DataLoader
+    # *- extra options: show hypo result
+    if train_args["show_hypo_result"] == True:
+        from torch_geometric.loader import DataLoader
 
-    sample_dataset, _ = process_dataset("OptimizedHypoDataset", args)
-    test_dataset = sample_dataset
-
-    batch_size = dataloader_args["batch_size"]
-    num_workers = dataloader_args["num_workers"]
-    test_loader = DataLoader(test_dataset, shuffle=False, batch_size=batch_size, num_workers=num_workers)
-    print(f"sample_dataset:{test_dataset}, use sampled data as the testing dataset.")
+        hypo_dataset, _ = process_dataset("OptimizedHypoDataset", args)
+        hypo_loader = DataLoader(hypo_dataset, shuffle=False, batch_size=dataloader_args["batch_size"], num_workers=dataloader_args["num_workers"])
+        print(f"sample_dataset: {hypo_dataset}")
 
     # sync the processed data path if auto processed the dataset name
-    if args["Process"]["auto_processed_name"] is True:
-        args["Dataset"][dataset_name]["processed_dir"] = data_processed_path
-        dataset_args["processed_dir"] = data_processed_path
-        dataset_args["get_parameters_from"] = dataset_args["processed_dir"]
+    # if args["Process"]["auto_processed_name"] is True:
+    # args["Dataset"][dataset_name]["processed_dir"] = data_processed_path
+    # dataset_args["processed_dir"] = data_processed_path
+    # dataset_args["get_parameters_from"] = dataset_args["processed_dir"]
 
     print(f"dataset num, train:{len(train_dataset)}, val:{len(validation_dataset)}, test:{len(test_dataset)}")
 
@@ -177,6 +188,7 @@ def start_training(model_name, dataset_name, args):
     train_losses = []
     val_losses = []
     test_losses = []
+    hypo_losses = []
 
     if load_path:
         with open(osp.join(load_path, "train_progress.csv"), mode="r") as file:
@@ -190,21 +202,27 @@ def start_training(model_name, dataset_name, args):
         eval_results = None
 
         model, train_loss = train_step(model, train_loader, train_dataset, optimizer, device)
-        val_eval_results = test_evaluations(model, val_loader, validation_dataset, device)
-        val_loss = val_eval_results[0]
-        test_eval_results = test_evaluations(model, test_loader, test_dataset, device)
-        test_loss = test_eval_results[0]
+        val_loss, val_out, val_y = test_evaluations(model, val_loader, validation_dataset, device)
 
-        eval_results = val_eval_results
-        eval_loss = val_loss
+        if train_args["ignore_test_evaluation"] is True:
+            test_loss = 0.0
+            eval_results = val_loss, val_out, val_y
+            eval_loss = val_loss
+        else:
+            test_loss, test_out, test_y = test_evaluations(model, test_loader, test_dataset, device)
+            eval_results = test_loss, test_out, test_y
+            eval_loss = test_loss
 
-        # test_loss = 0.0
-        # if epoch == epochs - 1:
-        #     test_eval_results = test_evaluations(model, test_loader, test_dataset, device)
-        #     eval_results = test_eval_results
-        #     test_loss = test_eval_results[0]
-        #     print(f"Final test loss is {test_loss}")
-        #     # eval_loss = test_loss
+        if epoch == epochs - 1 and train_args["ignore_test_evaluation"] is True:
+            print("Last one.")
+            test_loss, test_out, test_y = test_evaluations(model, test_loader, test_dataset, device)
+            print(f"Final test loss is {test_loss}")
+            # eval_loss = test_loss
+
+        # *- extra options: show hypo result
+        if train_args["show_hypo_result"] == True:
+            hypo_loss, hypo_out, hypo_y = test_evaluations(model, hypo_loader, hypo_dataset, device)
+            hypo_losses.append(hypo_loss)
 
         scheduler.step(val_loss)
         current_lr = optimizer.param_groups[0]["lr"]
@@ -216,32 +234,52 @@ def start_training(model_name, dataset_name, args):
         save_params = (
             [args, dataset_args, epoch, model]
             + [optimizer, scheduler, result_path]
-            + [train_losses, val_losses, test_losses, eval_results, model_name]
+            + [train_losses, val_losses, test_losses, hypo_losses, eval_results, model_name]
         )
 
-        # save best model
+        # get best loss
+        get_best_loss = False
         if best_loss is None or eval_loss < best_loss:
+            get_best_loss = True
             best_loss = eval_loss
+            # print(f"Get best loss:{best_loss}")
+
+        # save result data
+        if train_args["save_best_model_only"] is True and get_best_loss:
             save_result_data(*save_params)
 
-            # * new feature
-            print("sample_opt_hypo-------------------------------------------")
-            _, s_out, s_y = test_eval_results
+        # save result data
+        if train_args["save_best_model_only"] is False:
+            save_result_data(*save_params)
+            
+        # *- extra options: show hypo result
+        if train_args["show_hypo_result"] == True:
+            print(f"    [sample_opt_hypo]---------------------")
             # Reverse normalization of out and y
             if args["Process"]["target_normalization"]:
-                s_min, s_max = get_data_scale(args["Dataset"]["MPDatasetCeCoCuBased"]["get_parameters_from"])
-                s_y = reverse_min_max_scalar_1d(s_y, s_min, s_max)
-                s_out = reverse_min_max_scalar_1d(s_out, s_min, s_max)
-            save_regression_result(s_out, s_y, result_path, "sample_opt_hypo_regression_result.txt")
-            s_mae, s_r2 = plot_regression_result(
-                "Model regression",
+                data_path = process.get_parameter_file_path(args["Dataset"]["OptimizedHypoDataset"]["get_parameters_from"], args)
+                hypo_min, hypo_max = get_data_scale(data_path)
+                hypo_y = reverse_min_max_scalar_1d(hypo_y, hypo_min, hypo_max)
+                hypo_out = reverse_min_max_scalar_1d(hypo_out, hypo_min, hypo_max)
+
+            # save result
+            postfix_epoch = (
+                f"_{epoch}" if args["Training"]["save_all_epoch_result"] is True and args["Training"]["save_best_model_only"] is False else ""
+            )
+            save_regression_result(hypo_out, hypo_y, result_path, f"sample_opt_hypo_regression_result{postfix_epoch}.txt")
+            hypo_mae, hypo_r2 = plot_regression_result(
+                "Hypothetic Compounds Regression Result",
                 result_path,
-                filename="sample_opt_hypo_regression_result.txt",
-                plotfilename="sample_opt_hypo_regression_figure.jpeg",
+                filename=f"sample_opt_hypo_regression_result{postfix_epoch}.txt",
+                plotfilename=f"sample_opt_hypo_regression_figure{postfix_epoch}.jpeg",
                 scope=[-2, 4, -2, 4],
             )
-            print("sample_opt_hypo-------------------------------------------")
+            print(f"    MAE={hypo_mae}")
+            print(f"    R^2={hypo_r2}")
+            print(f"    [sample_opt_hypo]---------------------")
+            print("-------------------------------------------\n")
 
+        # show progress message
         progress_msg = f"epoch:{str(epoch)} train:{str(round(train_loss,4))} valid:{str(round(val_loss, 4))} test:{'-' if test_loss==0.0 else str(round(test_loss, 4))} lr:{str(round(current_lr, 8))} eval_best:{str(round(best_loss, 4))}"
         pbar.set_description(progress_msg)
         pbar.update(1)

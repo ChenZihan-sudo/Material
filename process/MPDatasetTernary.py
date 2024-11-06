@@ -269,12 +269,12 @@ def raw_data_process(args, onehot_gen=False, onehot_range: list = None) -> list:
     for i, d in enumerate(data_list):
         d.y = torch.Tensor(np.array([y_list[i]], dtype=np.float32))
 
-    # write parameters into {DATASET_MP_RAW_DIR}/PARAMETERS
+    # write parameters into <processed_dir>/PARAMETERS
     atomic_numbers = list(atomic_number_set)
     atomic_numbers.sort()
     atomic_numbers = [int(a) for a in atomic_numbers]
     parameter = {"data_min": data_min, "data_max": data_max, "onehot_set": atomic_numbers}
-    # Path where the indices csv file is created. (i.e. {DATASET_MP_RAW_DIR}/PARAMETERS)
+    # Path where the indices csv file is created. (i.e. <processed_dir>/PARAMETERS)
     filename = osp.join(d_args["processed_dir"], "PARAMETERS")
     with open(filename, "w") as f:
         json.dump(parameter, f)
