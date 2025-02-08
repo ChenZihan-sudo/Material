@@ -30,8 +30,8 @@ def hypo_data_sample_index(
     # sample some compounds from the compounds that { pred value < cutoff value }
     np.random.seed(sample_seed)
     extract_out_random_idx = np.random.choice(extract_out_idx, round(len(extract_out_idx) * sample_ratio), replace=False)
-    print(extract_out_random_idx)
     extract_out_random_idx.sort()
+    
     # random_idx begins from 0
     random_idx = extract_out_random_idx
     print("random index:", random_idx)
@@ -52,8 +52,6 @@ def sample_hypo_data(
     sample_seed,
     **kwargs,
 ):
-
-
     pred_out_np, random_idx = hypo_data_sample_index(
         config, model_path, batch_size, dataset_name, generation, postfix_epoch, sample_cutoff_value, sample_ratio, sample_seed
     )

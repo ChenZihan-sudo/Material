@@ -128,7 +128,8 @@ def start_training(model_name, dataset_name, args):
     device = get_device(args=args)
 
     if load_path:
-        checkpoint = torch.load(osp.join(load_path, "checkpoint.pt"))
+        checkpoint = torch.load(osp.join(load_path, train_args["load_model_name"]))
+        epoch = checkpoint["epoch"] + 1
         model = checkpoint["model"]
         model.load_state_dict(checkpoint["model_state_dict"])
         model = model.to(device)
@@ -155,7 +156,7 @@ def start_training(model_name, dataset_name, args):
     optimizer_args = model_args["optimizer"]
     optimizer_params = optimizer_args["params"] if optimizer_args["params"] is not None else {}
     optimizer = getattr(torch.optim, optimizer_args["name"])(model.parameters(), lr=model_args["learning_rate"], **optimizer_params)
-    if load_path and train_args["resume_training"] is True:
+    if load_path and train_args["resume_optimizer_state"] is True:
         # optimizer = checkpoint["optimizer"]
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
@@ -163,7 +164,7 @@ def start_training(model_name, dataset_name, args):
     scheduler_args = model_args["scheduler"]
     scheduler_params = scheduler_args["params"] if scheduler_args["params"] is not None else {}
     scheduler = getattr(torch.optim.lr_scheduler, scheduler_args["name"])(optimizer, **scheduler_params)
-    if load_path and train_args["resume_training"] is True:
+    if load_path and train_args["resume_scheduler_state"] is True:
         # scheduler = checkpoint["scheduler"]
         scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
 
@@ -172,6 +173,7 @@ def start_training(model_name, dataset_name, args):
         result_path = load_path
     else:
         result_path = create_result_folder(osp.join(train_args["save_result_on"], model_name))
+        print(f"A new result folder is created: {result_path}")
 
     model_summary(model)
     with open(osp.join(result_path, "model_info.txt"), "w") as file:
@@ -194,6 +196,8 @@ def start_training(model_name, dataset_name, args):
         with open(osp.join(load_path, "train_progress.csv"), mode="r") as file:
             reader = csv.DictReader(file)
             for row in reader:
+                if str(epoch) == row["epochs"]:
+                    break
                 train_losses.append(float(row["train_losses"]))
                 val_losses.append(float(row["val_losses"]))
                 test_losses.append(float(row["test_losses"]))
@@ -251,7 +255,7 @@ def start_training(model_name, dataset_name, args):
         # save result data
         if train_args["save_best_model_only"] is False:
             save_result_data(*save_params)
-            
+
         # *- extra options: show hypo result
         if train_args["show_hypo_result"] == True:
             print(f"    [sample_opt_hypo]---------------------")

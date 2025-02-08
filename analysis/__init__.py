@@ -28,7 +28,9 @@ def manager(config, args, use_config=False):
     parser = argparse.ArgumentParser(description="sample and analysis by inference a model")
 
     parser.add_argument("-C", "--config_path", default="config.yml", type=str, help="config file path (default: config.yml)")
-    parser.add_argument("-M", "--model_path", required=False, type=str, default="", help="model path for inference (<model path>/checkpoint.pt)")
+    parser.add_argument(
+        "-M", "--model_path", required=False, type=str, default="", help="model path folder for inference (<model path>/checkpoint.pt)"
+    )
     parser.add_argument("-D", "--dataset_name", required=True, type=str, help="dataset type (HypoDataset, OptimizedHypoDataset, etc.)")
     parser.add_argument("-B", "--batch_size", required=False, default=100, type=int)
     parser.add_argument("-G", "--generation", default="1G", type=str, help="the generation name tag of the model (default:1G)")

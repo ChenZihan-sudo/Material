@@ -97,8 +97,8 @@ def raw_data_process(args, onehot_range: list = None) -> list:
             except:
                 print("Failed to load ", formation_energy_data_path)
         # print(res)
-        if not exist or not osp.exists(compound_data_path):
-            print(f"Compound poscar file not exist {compound_data_path}")
+        if not exist or res > 10.0 or not osp.exists(compound_data_path):
+            print(f"Compound poscar file will not included {compound_data_path}")
             continue
 
         total_valid += 1

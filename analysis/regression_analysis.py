@@ -43,4 +43,4 @@ def regression_analysis(config, model_path, batch_size, dataset_name, generation
     regression_name = f"{generation}_{dataset_name}_regression{"" if postfix_epoch == "" else f'_{postfix_epoch}'}.png"
     regression_title = f"{generation}_{dataset_name}_regression"
     save_regression_result(pred_data, target_data, model_path, filename=regression_result_name)
-    plot_regression_result(regression_title, model_path, filename=regression_result_name, plotfilename=regression_name, scope=[-2, 4, -2, 4])
+    plot_regression_result(regression_title, model_path, filename=regression_result_name, plotfilename=regression_name, scope=[-5, 4, -5, 4])

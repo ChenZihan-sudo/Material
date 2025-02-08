@@ -5,8 +5,10 @@ __pycache__/
 dataset/processed/
 dataset/raw/
 
+# ignore v1 version
 v1/
 
+# working dirctory 
 /*.ipynb
 /*.py
 /*.csv
@@ -15,15 +17,21 @@ v1/
 !main.py
 !utils.py
 
+# ignore results
 results/ChemGNN
 results/PNA
 results/CGCNN
 results/GCN
 
+# ignore all tune results folder
 tune_results*/
+
+# ignore all legacy folder
 legacy*/
 
+
 *.out
+*.old
 
 .ipynb_checkpoints/
 

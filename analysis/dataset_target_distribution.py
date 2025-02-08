@@ -14,7 +14,7 @@ def dataset_target_distribution(config, model_path, batch_size, dataset_name, ge
     dataset_args = config["Dataset"][dataset_name]
     processed_path = dataset_args["processed_dir"]
     print(processed_path)
-    
+
     if "y" not in dataset[0]:
         print(f"{dataset_name} don't have a target (y, formation energy)")
         return
@@ -34,7 +34,7 @@ def dataset_target_distribution(config, model_path, batch_size, dataset_name, ge
 
     # show results
     get_out = results
-    counts, bins = np.histogram(get_out.to("cpu"), bins=100)
+    counts, bins = np.histogram(get_out.to("cpu"), bins=100, range=(-5, 5))
     bin_centers = (bins[:-1] + bins[1:]) / 2
     width = 0.8 * (bins[1] - bins[0])
 

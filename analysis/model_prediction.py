@@ -66,14 +66,16 @@ def model_prediction(config, model_path, batch_size, dataset_name, generation, p
             torch.cuda.empty_cache()
             del out, idx, data_block, dataloader
             gc.collect()
-
-    if dataset_name == "OptimizedHypoDataset" or dataset_name == "UnoptimizedHypoDataset":
+            
+    elif dataset_name == "OptimizedHypoDataset" or dataset_name == "UnoptimizedHypoDataset":
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=0)
         data_length = math.ceil(len(dataset) / batch_size)
         out, idx = predict_step(model, dataloader, data_length, device)
         full_out = torch.cat((full_out, out), 0)
         idx_out = torch.cat((idx_out, idx), 0)
 
+    else:
+        print(f"Dataset {dataset_name} is not supported yet. Model prediction supported: HypoDataset, OptimizedHypoDataset and UnoptimizedHypoDataset")
     print(dataset_args)
 
     # reverse data scale
